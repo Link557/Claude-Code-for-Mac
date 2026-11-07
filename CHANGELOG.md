@@ -1,6 +1,6 @@
 # 更新记录
 
-各版本的发布说明，最新在前。安装包见 [Releases](https://github.com/Link557/Claude-Code-for-Mac/releases)。
+各版本的发布说明，最新在前。安装包见 [Releases](https://github.com/Link557/Claude-Code-for-iOS/releases)。
 
 ## v0.3.51 更新
 
