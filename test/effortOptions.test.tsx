@@ -26,6 +26,35 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+it('shows the resolved third-party model and submits its CLI identifier unchanged', async () => {
+  vi.mocked(window.desk.meta.get).mockResolvedValue(meta([
+    { value: 'sonnet', label: 'Sonnet', resolvedModel: 'deepseek-chat', efforts: [] },
+    { value: 'vendor/custom-model', label: 'Custom model', efforts: [] }
+  ]))
+  const change = vi.fn()
+  render(<ModePicker cwd="/project" options={{ model: 'sonnet', mode: 'default', effort: null }} onChange={change} />)
+  fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
+  await screen.findByText('deepseek-chat')
+  fireEvent.click(screen.getByRole('button', { name: 'Custom model' }))
+  expect(change).toHaveBeenCalledWith({ model: 'vendor/custom-model' })
+})
+
+it('refreshes the visible model catalog when the current CLI configuration changes', async () => {
+  let changed!: (change: { cwd: string; scope: 'user' | 'project' }) => void
+  const off = vi.fn()
+  window.desk.meta.onConfigChanged = vi.fn(listener => { changed = listener; return off })
+  const view = render(<Harness />)
+  await waitFor(() => expect(window.desk.meta.get).toHaveBeenCalledOnce())
+  vi.mocked(window.desk.meta.get).mockResolvedValue(meta([{ value: 'default', label: 'DeepSeek', resolvedModel: 'deepseek-chat', efforts: [] }]))
+  act(() => changed({ cwd: '/different-project', scope: 'project' }))
+  expect(window.desk.meta.get).toHaveBeenCalledOnce()
+  act(() => changed({ cwd: '/different-project', scope: 'user' }))
+  fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
+  await screen.findByRole('button', { name: 'DeepSeek' })
+  view.unmount()
+  expect(off).toHaveBeenCalledOnce()
+})
+
 it('uses cached model capability while the live query is pending and keeps Ultracode selected', async () => {
   const live = deferred<ReturnType<typeof meta>>()
   vi.mocked(window.desk.meta.get).mockReturnValue(live.promise)

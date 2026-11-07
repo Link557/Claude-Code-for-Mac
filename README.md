@@ -6,7 +6,7 @@
 
 ## 下载和安装
 
-Windows 原生预览版位于 `win` 分支，版本标记为 `v0.3.52-win.1`。原有 Mac `main` 分支与 v0.3.51 发布保留。两版共用 Electron / React 主体，平台差异集中在运行引擎、窗口与终端适配。
+Windows 原生预览版位于 `win` 分支，版本标记为 `v0.3.52-win.2`。原有 Mac `main` 分支与 v0.3.51 发布保留。两版共用 Electron / React 主体，平台差异集中在运行引擎、窗口与终端适配。
 
 Windows 使用 x64 便携目录：解压完整 ZIP 后启动 `Claude Code.exe`，不要单独移动 exe。官方认证、CLI 接续方式与限制见 [Windows 使用说明](docs/windows-native.md)。
 

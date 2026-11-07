@@ -65,7 +65,10 @@ function broadcast(sessionId: string, event: ChatEvent): void {
   broadcastEvent('chat:onEvent', sessionId, event)
 }
 
-onClaudeConfigChanged(change => broadcastEvent('meta:onConfigChanged', change))
+onClaudeConfigChanged(change => {
+  meta.invalidate()
+  broadcastEvent('meta:onConfigChanged', change)
+})
 
 const commandConfiguration = (): string => JSON.stringify([store.read().settings.claudePath ?? null, app.getVersion()])
 export const commandCatalog: CommandCatalog = new CommandCatalog({
@@ -90,6 +93,7 @@ export const scheduler: Scheduler = new Scheduler({
 })
 
 export function projectMetadata(cwd: string) {
+  watchClaudeConfig(cwd)
   return meta.get(cwd, commandCatalog.seedFromMetadata(cwd))
 }
 

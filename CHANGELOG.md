@@ -2,6 +2,13 @@
 
 各版本的发布说明，最新在前。安装包见 [Releases](https://github.com/Link557/Claude-Code-for-iOS/releases)。
 
+## v0.3.52-win.2 — 动态模型识别
+
+- 移除固定模型名单，保留 CLI 返回的自定义模型、默认模型和别名映射。
+- 模型菜单显示实际目标 ID，选择值原样交给 CLI。
+- 配置变化后刷新模型目录，缓存按接入环境和项目配置隔离。
+- 识别不等于调用成功；配置与接口说明见 [模型识别接口](docs/model-recognition.md)。
+
 ## v0.3.52-win.1 — Windows 原生预览版
 
 - 新增 Windows 原生 CLI 接入、官方认证检测、PowerShell 登录入口和原生终端；复用已有配置与历史会话。

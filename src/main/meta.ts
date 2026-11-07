@@ -8,7 +8,6 @@ import type { CommandInfo, MetaInfo, ModelOption } from '../shared/types'
 import { readMetadata } from './metadataQuery'
 import { claudeExecutable } from './sdk'
 
-const ALIASES = ['opus', 'sonnet', 'haiku', 'fable']
 const TTL = 5 * 60_000
 const DISK_TTL = 7 * 24 * 60 * 60_000
 const diskWrites = new Map<string, Promise<void>>()
@@ -22,19 +21,31 @@ async function configuration(): Promise<string> {
   }
   return JSON.stringify([app.getVersion(), executable ?? null, fingerprint, process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')])
 }
-async function key(cwd: string): Promise<string> { return JSON.stringify([cwd, await configuration()]) }
+async function key(cwd: string): Promise<string> {
+  const directory = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+  const settings = await Promise.all([
+    join(directory, 'settings.json'), join(cwd, '.claude', 'settings.json'), join(cwd, '.claude', 'settings.local.json')
+  ].map(async path => {
+    try { return await readFile(path, 'utf8') }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ''; throw error }
+  }))
+  const env = Object.entries(process.env).filter(([name]) => /^(ANTHROPIC_|CLAUDE_CODE_USE_|AWS_PROFILE$|CLOUD_ML_REGION$|ANTHROPIC_VERTEX_PROJECT_ID$)/.test(name)).sort(([a], [b]) => a.localeCompare(b))
+  // Configuration can contain secrets: only its digest may be persisted in a cache key.
+  const fingerprint = createHash('sha256').update(JSON.stringify([settings, env])).digest('hex')
+  return JSON.stringify([cwd, await configuration(), fingerprint])
+}
 function filename(cacheKey: string): string {
   return join(app.getPath('userData'), 'model-catalog', createHash('sha256').update(cacheKey).digest('hex') + '.json')
 }
 function validModels(value: unknown): value is ModelOption[] {
   const levels = ['low', 'medium', 'high', 'xhigh', 'max']
-  return Array.isArray(value) && value.length > 0 && value.every(m => m && ALIASES.includes(m.value) && typeof m.label === 'string' && (m.resolvedModel === undefined || typeof m.resolvedModel === 'string') && Array.isArray(m.efforts) && m.efforts.every((level: unknown) => typeof level === 'string' && levels.includes(level)))
+  return Array.isArray(value) && value.length > 0 && value.every(m => m && typeof m.value === 'string' && m.value.trim().length > 0 && typeof m.label === 'string' && (m.resolvedModel === undefined || typeof m.resolvedModel === 'string') && Array.isArray(m.efforts) && m.efforts.every((level: unknown) => typeof level === 'string' && levels.includes(level)))
 }
 export async function cachedModels(cwd = homedir()): Promise<ModelOption[] | null> {
   try {
     const cacheKey = await key(cwd)
     const saved = JSON.parse(await readFile(filename(cacheKey), 'utf8'))
-    if (saved.version !== 1 || saved.key !== cacheKey || !Number.isFinite(saved.updatedAt) || saved.updatedAt > Date.now() || Date.now() - saved.updatedAt >= DISK_TTL || !validModels(saved.models)) return null
+    if (saved.version !== 2 || saved.key !== cacheKey || !Number.isFinite(saved.updatedAt) || saved.updatedAt > Date.now() || Date.now() - saved.updatedAt >= DISK_TTL || !validModels(saved.models)) return null
     return saved.models
   } catch { return null }
 }
@@ -43,7 +54,7 @@ async function saveModels(cacheKey: string, models: ModelOption[], current: () =
   const file = filename(cacheKey), temporary = `${file}.${randomUUID()}.tmp`
   try {
     await mkdir(join(app.getPath('userData'), 'model-catalog'), { recursive: true })
-    await writeFile(temporary, JSON.stringify({ version: 1, key: cacheKey, updatedAt: Date.now(), models }), { mode: 0o600 })
+    await writeFile(temporary, JSON.stringify({ version: 2, key: cacheKey, updatedAt: Date.now(), models }), { mode: 0o600 })
     if (current()) await rename(temporary, file)
     else await rm(temporary, { force: true })
   } catch {
@@ -70,7 +81,7 @@ export async function get(cwd = homedir(), onCommands?: (commands: CommandInfo[]
   if (existing && existing.expires > Date.now()) return existing.promise
   const promise = readMetadata(cwd).then(async init => {
     const result: MetaInfo = {
-      models: init.models.filter(m => ALIASES.includes(m.value)).map(m => ({ value: m.value, resolvedModel: m.resolvedModel, label: m.displayName, efforts: m.supportsEffort ? (m.supportedEffortLevels ?? []) : [] })),
+      models: init.models.map(m => ({ value: m.value, resolvedModel: m.resolvedModel, label: m.displayName || m.resolvedModel || m.value, efforts: m.supportsEffort ? (m.supportedEffortLevels ?? []) : [] })),
       subscriptionType: init.account?.subscriptionType ?? null,
       email: init.account?.email ?? null,
       organization: init.account?.organization ?? null,
