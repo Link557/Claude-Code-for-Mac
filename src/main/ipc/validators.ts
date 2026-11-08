@@ -66,6 +66,10 @@ const decision = arg('decision', z.discriminatedUnion('type', [
 ]))
 
 const settingsPatch = arg('patch', z.object({
+  displayName: z.string().trim().min(1).max(20).regex(/^[^\p{Cc}\p{Cf}]+$/u).nullable(),
+  retainedSessions: z.number().int().min(1).max(16),
+  sessionIdleMinutes: z.number().int().min(1).max(120),
+  promptSuggestions: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
   defaultModel: z.string(),
   defaultPermissionMode: permissionMode,
@@ -98,7 +102,7 @@ const nullableModel = () => arg('model', z.string().nullish().transform(value =>
 
 export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'files:diff': args(text('path'), arg('source', z.enum(['working', 'branch']))),
-  'usage:overview': args(),
+  'usage:overview': args(optionalText('cwd')),
   'usage:stats': args(looseFlag('refresh')),
   'usage:saveProfile': args(text('accountKey'), arg('profile', z.object({ name: z.string(), avatar: z.string().nullable() }))),
 
@@ -123,6 +127,10 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'app:openNotificationSettings': args(),
   'app:state': args(),
   'app:focus': args(),
+  'connection:status': args(optionalText('path')),
+  'connection:pickExecutable': args(),
+  'connection:login': args(),
+  'connection:installationHelp': args(),
 
   'projects:list': args(),
   'projects:pickFolder': args(),
@@ -198,6 +206,7 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'chat:setEffort': args(text('id'), arg('effort', effortLevel.nullish().transform(value => value ?? null))),
   'chat:respond': args(text('id'), text('requestId'), decision),
   'chat:checkExternal': args(text('id'), text('path')),
+  'chat:handoffToCli': args(text('id'), text('path')),
   'chat:reload': args(text('id'), text('path')),
   'chat:context': args(text('id'), text('path'), nullableModel()),
   'chat:mcp': args(nullableText('id'), text('path')),

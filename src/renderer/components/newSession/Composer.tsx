@@ -21,6 +21,7 @@ import {
 import type { CommandInfo, EffortLevel, PermissionMode } from '@shared/types'
 import { EFFORT_LEVELS, findTrigger, PERMISSION_MODES, shortenPath } from '@shared/format'
 import { useDesk } from '../../store'
+import { useModal } from '../../modalStore'
 import { useDismiss } from '../../hooks/useDismiss'
 import type { RuntimeSettings } from '@shared/chat'
 import { Menu } from '../ui/Menu'
@@ -37,6 +38,7 @@ interface ComposerProps {
   sessionState?: ChatState
   activity?: ChatActivity
   sessionId?: string
+  promptSuggestion?: import('@shared/chat').PromptSuggestion | null
   queuePanel?: ReactNode
   header?: ReactNode
   clearOnSubmit?: boolean
@@ -76,6 +78,7 @@ export function Composer({
   sessionState,
   activity,
   sessionId,
+  promptSuggestion,
   header,
   queuePanel,
   clearOnSubmit = true,
@@ -102,6 +105,12 @@ export function Composer({
   onCommand
 }: ComposerProps) {
   const editor = useRef<EditorHandle>(null)
+  const [dismissedSuggestion, setDismissedSuggestion] = useState<string | null>(null)
+  const modalOpen = useModal(s => s.count > 0)
+  useEffect(() => {
+    if (promptSuggestion && (value !== '' || attachments.length)) setDismissedSuggestion(promptSuggestion.id)
+  }, [promptSuggestion, value, attachments.length])
+  const ghost = promptSuggestion && promptSuggestion.id !== dismissedSuggestion && value === '' && !attachments.length && !running && !panel && !modalOpen && canSubmit && (sessionState === undefined || sessionState === 'idle') ? promptSuggestion : null
   const historyIndex = useRef(-1)
   const home = useDesk((s) => s.home)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -141,6 +150,15 @@ export function Composer({
   }
 
   const onKey = (e: KeyboardEvent): boolean => {
+    if (ghost && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      if (e.key === 'Escape') { setDismissedSuggestion(ghost.id); return true }
+      if (e.key === 'Tab') {
+        setDismissedSuggestion(ghost.id)
+        valueRef.current = ghost.text
+        onChange(ghost.text)
+        return true
+      }
+    }
     if (suggest.open) {
       const n = suggest.items.length
       if (e.key === 'Escape') { suggest.dismiss(); return true }
@@ -333,7 +351,7 @@ export function Composer({
           value={value}
           rows={rows}
           autoFocus={autoFocus}
-          placeholder={placeholder}
+          placeholder={ghost ? <span data-prompt-suggestion>{ghost.text}<kbd className="ml-2 rounded border border-line px-1 text-[11px]">Tab 接受</kbd></span> : placeholder}
           cwd={cwd}
           home={home}
           onChange={(next, text, caret) => {

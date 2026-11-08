@@ -95,7 +95,7 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
           {!loading && !error && models.length === 0 && <button className="picker-option" onClick={retry}>没有可用模型 · 重试</button>}
 
           {modelMenu ? <div>
-            {inline !== 'fast' && models.map(m => <button key={m.value} aria-label={m.label} disabled={busy} aria-pressed={requestedModel?.value===m.value} className="picker-option" onClick={() => choose({model:m.value})}><span className="model-choice-name">{m.label}</span>{requestedModel?.value===m.value && <Check size={14}/>}</button>)}
+            {inline !== 'fast' && models.map(m => <button key={m.value} aria-label={m.label} disabled={busy} aria-pressed={requestedModel?.value===m.value} className="picker-option" onClick={() => choose({model:m.value})}><span className="model-choice-name min-w-0 break-all">{m.label}{m.resolvedModel && m.resolvedModel !== m.label && <small>{m.resolvedModel}</small>}</span>{requestedModel?.value===m.value && <Check size={14}/>}</button>)}
             {inline !== 'defaultModel' && <div className="picker-option picker-divider fast-option"><span className="model-choice-name flex items-center gap-2">Fast<WingedShoe/></span>
               <span className="fast-checkbox">
                 <input type="checkbox" aria-label="Fast" aria-describedby={fastHintId} checked={fast} disabled={busy || !fastKnown}

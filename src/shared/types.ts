@@ -33,6 +33,13 @@ export interface ModelOption {
 }
 
 export interface Settings {
+  /** Local display preference, independent of CLI authentication and provider. */
+  displayName?: string | null
+  /** Desktop process retention only; never written to Claude Code settings. */
+  retainedSessions?: number
+  sessionIdleMinutes?: number
+  /** Whether new desktop CLI sessions request next-prompt suggestions. CLI policy still applies. */
+  promptSuggestions?: boolean
   theme: Theme
   defaultModel: string
   defaultPermissionMode: PermissionMode

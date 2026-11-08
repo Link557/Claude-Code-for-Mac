@@ -2,11 +2,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { LiveSession } from '../src/main/live/LiveSession'
 import { Transcript } from '../src/main/transcript'
 import { PushQueue } from '../src/main/live/PushQueue'
-const sdk = vi.hoisted(() => ({ query: vi.fn(), allowBypass: false }))
+const sdk = vi.hoisted(() => ({ query: vi.fn(), allowBypass: false, promptSuggestions: true }))
 vi.mock('../src/main/sdk', () => ({ loadSdk: async () => sdk, claudeExecutable: () => undefined }))
-vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: sdk.allowBypass } }) }))
+vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: sdk.allowBypass, promptSuggestions: sdk.promptSuggestions } }) }))
 let session: LiveSession | undefined
-afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false })
+afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false; sdk.promptSuggestions = true; vi.useRealTimers() })
 function setup() {
   let fast = false
   let blocked = false
@@ -70,4 +70,45 @@ it('includes only the completed SDK reply in the completion notification preview
   await session!.start()
   query.push({ type: 'result', subtype: 'success', is_error: false, result: '**已完成**本次修改。', duration_ms: 1, uuid: 'result-id' })
   await vi.waitFor(() => expect(events).toHaveBeenCalledWith(expect.objectContaining({ kind: 'result', replyPreview: '已完成本次修改。' })))
+})
+
+it('keeps reading after result and publishes an ephemeral suggestion, clearing it before new input', async () => {
+  const { query, events } = setup()
+  await session!.start()
+  expect(sdk.query.mock.calls.at(-1)?.[0].options.promptSuggestions).toBe(true)
+  query.push({ type: 'result', subtype: 'success', is_error: false, result: 'done', duration_ms: 1, uuid: 'r', queued_turn_count: 0 })
+  query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 's', suggestion: '运行测试' })
+  await vi.waitFor(() => expect(session!.promptSuggestion).toEqual({ id: 's', text: '运行测试' }))
+  expect(events).toHaveBeenCalledWith({ kind: 'promptSuggestion', suggestion: { id: 's', text: '运行测试' } })
+  session!.send('我有别的问题')
+  expect(session!.promptSuggestion).toBeNull()
+  query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 'late', suggestion: '过期建议' })
+  await new Promise(r => setTimeout(r, 20))
+  expect(session!.promptSuggestion).toBeNull()
+})
+it('ignores suggestions for another session or after a failed result', async () => {
+  const { query, events } = setup()
+  await session!.start()
+  query.push({ type: 'result', subtype: 'success', is_error: false, duration_ms: 1, uuid: 'r' })
+  query.push({ type: 'prompt_suggestion', session_id: 'another', uuid: 's', suggestion: 'wrong' })
+  query.push({ type: 'result', subtype: 'success', is_error: true, result: 'error', duration_ms: 1, uuid: 'r2' })
+  query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 's2', suggestion: 'wrong' })
+  await vi.waitFor(() => expect(events).toHaveBeenCalledWith(expect.objectContaining({ kind: 'result', resultId: 'r2' })))
+  expect(session!.promptSuggestion).toBeNull()
+})
+it('does not request suggestions when the local switch is off', async () => {
+  sdk.promptSuggestions = false
+  setup(); await session!.start()
+  expect(sdk.query.mock.calls.at(-1)?.[0].options.promptSuggestions).toBe(false)
+})
+it('expires a suggestion after five minutes', async () => {
+  vi.useFakeTimers()
+  const { query } = setup()
+  await session!.start()
+  query.push({ type: 'result', subtype: 'success', is_error: false, duration_ms: 1, uuid: 'r' })
+  query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 's', suggestion: 'check' })
+  await vi.advanceTimersByTimeAsync(10)
+  expect(session!.promptSuggestion?.text).toBe('check')
+  await vi.advanceTimersByTimeAsync(300000)
+  expect(session!.promptSuggestion).toBeNull()
 })

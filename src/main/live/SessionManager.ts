@@ -19,9 +19,6 @@ import { SessionPreferencesState } from './SessionPreferencesState'
 import type { ActivityRepository } from '../activityRepository'
 import type { HumanSubmissionRepository } from '../humanSubmissionRepository'
 
-const MAX_LIVE = 4
-const IDLE_MS = 15 * 60_000
-
 interface CommandObserver {
   configuration(): string
   publisher(cwd: string): (commands: CommandInfo[]) => void
@@ -92,6 +89,7 @@ export class SessionManager {
       ...this.preferences.persistence(sessionId),
       revision: this.revisions.get(sessionId) ?? 0,
       runtime: session?.runtime,
+      promptSuggestion: session?.promptSuggestion ?? null,
       activity: session?.activity.snapshot(),
       summary: transcript.activity.snapshot(),
       tasks: session?.backgroundTasks() ?? [],
@@ -166,6 +164,11 @@ export class SessionManager {
         return
       }
       for (const path of attachments) await access(path)
+      if (this.seen.has(sessionId) && await this.checkExternal(sessionId, projectPath)) {
+        this.transcripts.delete(sessionId)
+        this.transcriptLoads.delete(sessionId)
+        this.publish(sessionId, { kind: 'replaceHistory', snapshot: await this.open(sessionId, projectPath) })
+      }
       const prefs = this.prefs(sessionId)
       const session = this.live.get(sessionId)
       const busy = session?.state === 'running' || session?.state === 'awaiting'
@@ -408,6 +411,27 @@ export class SessionManager {
     const before = this.seen.get(sessionId)
     if (before === undefined) this.seen.set(sessionId, count)
     return before !== undefined && count > before
+  }
+
+  handoffToCli(sessionId: string, projectPath: string): Promise<string> {
+    return this.lock(sessionId, async () => {
+      this.assertInactive(sessionId, '切换到 CLI')
+      if (this.live.usageCount(sessionId) > 1) throw new Error('请等待当前会话操作结束后切换到 CLI')
+      if (this.prefs(sessionId).queue.items.some(item => item.editing || ['queued', 'failed', 'submitting', 'submitted', 'received', 'unknown'].includes(item.status))) {
+        throw new Error('请先处理待发消息及未确认的交付记录，再切换到 CLI')
+      }
+      await this.transcript(sessionId, projectPath)
+      const id = this.historyId(sessionId)
+      const sdk = await loadSdk()
+      if (!(await sdk.getSessionMessages(id, { dir: projectPath })).length) throw new Error('会话尚未保存，请稍后重试')
+      this.assertInactive(sessionId, '切换到 CLI')
+      if (this.live.usageCount(sessionId) > 1) throw new Error('请等待当前会话操作结束后切换到 CLI')
+      this.closeSession(sessionId)
+      this.transcripts.delete(sessionId)
+      this.transcriptLoads.delete(sessionId)
+      this.publish(sessionId, { kind: 'replaceHistory', snapshot: await this.open(sessionId, projectPath) })
+      return id
+    })
   }
 
   async context(sessionId: string, projectPath: string, model: string | null): Promise<ContextUsage | null> {
@@ -658,16 +682,19 @@ export class SessionManager {
   }
 
   /**
-   * 运行中的会话超过 MAX_LIVE 个时，才回收闲置超过 IDLE_MS 的会话，从最久没用的开始。
+   * 驻留实例超出本机设置时，才回收已达到闲置时长的会话，从最久没用的开始。
    * 没超出上限就全部保留；超出但都没闲置够时，暂时允许多开，等下一轮再回收。
    * reserve 是即将新建、还没登记的会话数。
    */
   private recycle(reserve = 0): void {
-    const excess = this.live.size + reserve - MAX_LIVE
+    const settings = store.read().settings
+    const retained = Number.isInteger(settings.retainedSessions) && settings.retainedSessions! >= 1 && settings.retainedSessions! <= 16 ? settings.retainedSessions! : 4
+    const minutes = Number.isInteger(settings.sessionIdleMinutes) && settings.sessionIdleMinutes! >= 1 && settings.sessionIdleMinutes! <= 120 ? settings.sessionIdleMinutes! : 15
+    const excess = this.live.size + reserve - retained
     if (excess <= 0) return
     const now = Date.now()
     const stale = this.live.idle()
-      .filter(([, s]) => now - s.lastActive > IDLE_MS)
+      .filter(([, s]) => now - s.lastActive > minutes * 60_000)
       .sort((a, b) => a[1].lastActive - b[1].lastActive)
     for (const [id] of stale.slice(0, excess)) this.closeSession(id)
   }

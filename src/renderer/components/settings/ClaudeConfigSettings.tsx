@@ -36,7 +36,7 @@ export function ClaudeConfigSettings({ cwd, keys, excludeKeys, searchable = true
         const disabled = !!saving || reloading || !!item.locked
         const label = CONFIG_LABELS[item.key] ?? item.key
         return <div key={item.key}>
-          <Row label={<label htmlFor={`config-${item.key}`}>{label}</label>} hint={item.locked}>
+          <Row label={<label htmlFor={`config-${item.key}`}>{label}</label>} hint={item.locked ?? (item.source === 'default' ? '引擎默认 · 未单独设置' : item.source === 'unknown' ? `CLI ${snapshot.cliVersion || '版本未知'} 未提供可确认的生效值` : undefined)}>
             {item.key === 'language' ? <ReplyLanguagePicker key={`${cwd}:${item.value}`} id={`config-${item.key}`} value={item.value} disabled={disabled} onSave={value => void save(item.key, value)} />
             : boolean ? <Toggle id={`config-${item.key}`} label={label} value={item.value === 'true'} disabled={disabled} title={item.locked} onChange={value => void save(item.key, String(value))} />
             : item.values.length ? <select id={`config-${item.key}`} disabled={disabled} value={item.value ?? ''} title={item.locked} onChange={e => void save(item.key, e.target.value)} className={settingsInputClass}>
@@ -45,6 +45,7 @@ export function ClaudeConfigSettings({ cwd, keys, excludeKeys, searchable = true
               {item.values.map(v => <option key={v} value={v}>{VALUE_LABELS[v] ?? v}</option>)}
             </select> : <ConfigInput key={`${item.key}:${item.value}`} id={`config-${item.key}`} initialValue={item.value} disabled={disabled} onSave={value => void save(item.key, value)} />}
           </Row>
+          {item.key === 'promptSuggestionEnabled' && <p className="px-4 pb-3 text-[12px] text-fg3">回复后可能提供下一条输入建议，会产生额外模型用量；Tab 填入草稿，Enter 才发送。是否返回建议取决于 CLI 与当前服务。</p>}
           {saving === item.key ? <p role="status" className="px-4 pb-3 text-[12px] text-fg3">保存中…</p> : results[item.key] && <p role={results[item.key].error ? 'alert' : 'status'} className={`px-4 pb-3 text-[12px] ${results[item.key].error ? 'text-danger' : 'text-fg3'}`}>{results[item.key].error ?? results[item.key].status ?? '已保存'}</p>}
         </div>
       })}

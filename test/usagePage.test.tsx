@@ -12,6 +12,21 @@ const overview: UsageOverview = { account: { key: 'a', email: 'a@test.com', orga
 beforeEach(() => { useUsage.setState({ overview: structuredClone(overview), error: null, loading: false, failures: 0, lastAttempt: 0 }); window.desk = { usage: { overview: vi.fn().mockResolvedValue(overview), saveProfile: vi.fn() } } as unknown as Window['desk'] })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 describe('usage navigation and shared requests', () => {
+  it('isolates in-flight quota responses across projects', async () => {
+    let finish!: (value: UsageOverview) => void
+    window.desk.usage.overview = vi.fn().mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ ...overview, usage: { available: false, subscriptionType: null, windows: [] } })
+    useDesk.setState({ projects: [{ id: 'a', name: 'a', path: '/a', addedAt: 0, collapsed: false }, { id: 'b', name: 'b', path: '/b', addedAt: 0, collapsed: false }], selectedProjectId: 'a', view: { kind: 'new' } })
+    const old = useUsage.getState().refresh()
+    useDesk.setState({ selectedProjectId: 'b' })
+    await useUsage.getState().refresh()
+    finish(overview); await old
+    expect(useUsage.getState().overview?.usage?.available).toBe(false)
+    expect(window.desk.usage.overview).toHaveBeenNthCalledWith(1, '/a')
+    expect(window.desk.usage.overview).toHaveBeenNthCalledWith(2, '/b')
+    useDesk.setState({ projects: [], selectedProjectId: null })
+    useUsage.setState({ scope: '' })
+  })
   it('shows remaining windows on one entry and routes without changing session state', () => {
     render(<UsageNav />)
     expect(screen.getByText('5h 80% · 周 60%')).toBeTruthy()

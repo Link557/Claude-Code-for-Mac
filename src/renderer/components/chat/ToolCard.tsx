@@ -5,6 +5,7 @@ import { useLayout } from '../../layoutStore'
 import type { UiBlock } from '@shared/chat'
 import { toolFilePath } from '@shared/fileChanges'
 import { toolNameZh, toolSummary } from '@shared/format'
+import { ToolImagePreview } from './ToolImagePreview'
 
 type ToolBlock = Extract<UiBlock, { kind: 'tool' }>
 
@@ -46,6 +47,7 @@ export function ToolCard({ block, running, cwd }: { block: ToolBlock; running: b
           </button>
         )}
       </div>
+      <ToolImagePreview block={block} cwd={cwd} />
       {open && <div className="border-t border-line">{<ToolBody block={block} />}</div>}
     </div>
   )

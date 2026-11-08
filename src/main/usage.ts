@@ -1,8 +1,10 @@
 // 套餐用量：和终端里 /usage 看到的一样。SDK 的这个接口还标着「实验性」，以后版本可能会改名。
 import { homedir } from 'node:os'
-import type { SDKControlGetUsageResponse } from '@anthropic-ai/claude-agent-sdk'
+import type { AccountInfo, Query, SDKControlGetUsageResponse } from '@anthropic-ai/claude-agent-sdk'
 import type { PlanUsage, UsageWindow } from '../shared/types'
 import { withIdleQuery } from './sdk'
+import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
+import { providerRoute } from './providerRoute'
 
 type Window = { utilization: number | null; resets_at: string | null } | null | undefined
 
@@ -22,8 +24,34 @@ export function toPlanUsage(r: SDKControlGetUsageResponse): PlanUsage {
   return { subscriptionType: r.subscription_type, available: r.rate_limits_available, windows }
 }
 
+/** CLI 可能返回适用但无窗口的结果。在同一查询内短暂等待后只补试一次，仍受临时查询总超时限制。 */
+export async function readPlanUsage(q: Pick<Query, 'usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET'>): Promise<PlanUsage> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const usage = toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
+    if (!usage.available || usage.windows.length) return usage
+    if (attempt === 0) await new Promise<void>(resolve => setTimeout(resolve, 2000))
+  }
+  throw new Error('额度接口未返回数据')
+}
+
+export async function readRoutedUsage(q: Query, account: AccountInfo): Promise<PlanUsage> {
+  const unavailable = { subscriptionType: null, available: false, windows: [] }
+  if (account.apiProvider && account.apiProvider !== 'firstParty') return unavailable
+  const config = await readConfigState(q)
+  const env = { ...process.env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) }
+  if (providerRoute(account, env) !== 'firstParty') return unavailable
+  return readPlanUsage(q)
+}
+
+/** Override nonessential traffic only for this explicit, short-lived quota read. */
+export function withUsageQuery<T>(fn: (q: Query) => Promise<T>, cwd = homedir()): Promise<T> {
+  return withIdleQuery({ cwd, tools: [], mcpServers: {}, strictMcpConfig: true,
+    settings: { disableAllHooks: true, env: {
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_AUTOUPDATER: '1'
+    } }
+  }, fn)
+}
+
 export function planUsage(): Promise<PlanUsage> {
-  return withIdleQuery({ cwd: homedir() }, async (q) =>
-    toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
-  )
+  return withUsageQuery(async q => readRoutedUsage(q, await q.accountInfo()))
 }

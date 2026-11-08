@@ -7,7 +7,7 @@ import { errorText } from './ipcError'
 import type { DemoState, DetectedFolder, Project, SessionSummary, Settings } from '@shared/types'
 import type { SessionOptions } from '@shared/chat'
 
-export type View = { kind: 'new' } | { kind: 'session'; sessionId: string; projectId: string } | { kind: 'settings'; tab?: 'general' | 'claude' | 'models' | 'context' | 'notifications' | 'advanced'; projectId?: string | null; sessionId?: string | null } | { kind: 'usage' } | { kind: 'schedules' } | { kind: 'skills'; tab?: 'skills' | 'mcp'; projectId?: string | null }
+export type View = { kind: 'new' } | { kind: 'session'; sessionId: string; projectId: string } | { kind: 'settings'; tab?: 'general' | 'connection' | 'claude' | 'models' | 'context' | 'notifications' | 'advanced'; projectId?: string | null; sessionId?: string | null } | { kind: 'usage' } | { kind: 'schedules' } | { kind: 'skills'; tab?: 'skills' | 'mcp'; projectId?: string | null }
 
 interface DeskState {
   greeting: string
@@ -66,7 +66,7 @@ export function refreshSessionsInBackground(projectId?: string): void {
 
 function chooseGreeting(state: DeskState): string {
   const { overview, error } = useUsage.getState()
-  return nextGreeting(greetingName(overview?.profile.name, overview?.account.email, overview || error ? state.username : null))
+  return nextGreeting(greetingName(state.settings?.displayName ?? overview?.profile.name, overview?.account.email, overview || error ? state.username : null))
 }
 
 export const useDesk = create<DeskState>((set, get) => ({
@@ -97,7 +97,7 @@ export const useDesk = create<DeskState>((set, get) => ({
       home: state.home,
       username: state.username ?? null,
       greetingSelected: !!projects.length && demo?.route !== 'settings',
-      greeting: projects.length && demo?.route !== 'settings' ? nextGreeting(null) : FALLBACK_GREETING,
+      greeting: projects.length && demo?.route !== 'settings' ? nextGreeting(greetingName(settings.displayName, null, null)) : FALLBACK_GREETING,
       demo,
       projects,
       settings,

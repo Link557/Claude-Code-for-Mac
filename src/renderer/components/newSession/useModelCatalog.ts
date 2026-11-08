@@ -15,6 +15,9 @@ export function useModelCatalog(cwd?: string) {
   const scope = JSON.stringify([cwd ?? null, executable ?? null])
   const [catalog, setCatalog] = useState<Catalog>()
   const [attempt, setAttempt] = useState(0)
+  useEffect(() => window.desk.meta.onConfigChanged?.(change => {
+    if (change.scope !== 'project' || change.cwd === cwd) setAttempt(value => value + 1)
+  }), [cwd])
   useEffect(() => {
     let active = true
     let freshSucceeded = false

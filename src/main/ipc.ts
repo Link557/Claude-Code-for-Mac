@@ -10,8 +10,7 @@ import { SessionManager } from './live/SessionManager'
 import * as files from './files'
 import { gitDiff } from './gitDiff'
 import * as meta from './meta'
-import { planUsage, toPlanUsage } from './usage'
-import { withIdleQuery } from './sdk'
+import { planUsage, readRoutedUsage, withUsageQuery } from './usage'
 import { UsageWorkerClient } from './usageWorkerClient'
 import { UsageProfiles, usageAccount } from './usageProfile'
 import type { UsageOverview } from '../shared/usageAnalytics'
@@ -29,6 +28,8 @@ import { createHumanSubmissionRepository } from './humanSubmissionRepository'
 import { appNotificationHandlers } from './appNotifications'
 import { Scheduler } from './schedules'
 import { readSkillBody, readSkillCatalog, setPluginEnabled } from './skills'
+import { claudeRuntime } from './sdk'
+import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable, posixResumeCommand } from './connection'
 
 export function applyTheme(theme: Settings['theme']): void {
   nativeTheme.themeSource = theme
@@ -39,24 +40,25 @@ function statistics(): UsageWorkerClient {
   return usageIndex ??= new UsageWorkerClient(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), join(app.getPath('userData'), 'usage-index.json'))
 }
 function profiles(): UsageProfiles { return new UsageProfiles(join(app.getPath('userData'), 'usage-profiles')) }
-let overviewRequest: Promise<UsageOverview> | null = null
+const overviewRequests = new Map<string, Promise<UsageOverview>>()
 let activeAccountKey: string | null = null
-function overview(): Promise<UsageOverview> {
-  if (overviewRequest) return overviewRequest
-  overviewRequest = withIdleQuery({ cwd: homedir() }, async q => {
-    const account = usageAccount(await q.accountInfo())
+function overview(cwd = homedir()): Promise<UsageOverview> {
+  const pending = overviewRequests.get(cwd)
+  if (pending) return pending
+  const request = withUsageQuery(async q => {
+    const identity = await q.accountInfo()
+    const account = usageAccount(identity)
     activeAccountKey = account.key
     const profile = await profiles().get(account)
     try {
-      const usage = toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
-      // 睡眠唤醒、网络未就绪时接口可能"成功"但不带任何窗口；按失败处理，渲染端会保留上次结果并退避重试。
-      if (usage.available && !usage.windows.length) return { account, usage: null, usageError: '额度接口未返回数据', profile, updatedAt: Date.now() }
+      const usage = await readRoutedUsage(q, identity)
       return { account, usage, profile, updatedAt: Date.now() }
     } catch (error: any) {
       return { account, usage: null, usageError: String(error.message ?? error), profile, updatedAt: Date.now() }
     }
-  }).catch(error => { activeAccountKey = null; throw error }).finally(() => { overviewRequest = null })
-  return overviewRequest
+  }, cwd).finally(() => { overviewRequests.delete(cwd) })
+  overviewRequests.set(cwd, request)
+  return request
 }
 function broadcast(sessionId: string, event: ChatEvent): void {
   if (event.kind === 'result') void statistics().recordDuration(event.durationMs).catch(error => console.error('Usage statistics:', error))
@@ -64,7 +66,10 @@ function broadcast(sessionId: string, event: ChatEvent): void {
   broadcastEvent('chat:onEvent', sessionId, event)
 }
 
-onClaudeConfigChanged(change => broadcastEvent('meta:onConfigChanged', change))
+onClaudeConfigChanged(change => {
+  meta.invalidate()
+  broadcastEvent('meta:onConfigChanged', change)
+})
 
 const commandConfiguration = (): string => JSON.stringify([store.read().settings.claudePath ?? null, app.getVersion()])
 export const commandCatalog: CommandCatalog = new CommandCatalog({
@@ -89,11 +94,20 @@ export const scheduler: Scheduler = new Scheduler({
 })
 
 export function projectMetadata(cwd: string) {
+  watchClaudeConfig(cwd)
   return meta.get(cwd, commandCatalog.seedFromMetadata(cwd))
 }
 
 
 export function registerIpc(demo: DemoState | null, focusWindow?: () => void): void {
+  registerNamespace('connection', {
+    status: async (_e, path) => {
+      const status = await connectionStatus(path)
+      meta.invalidate(); commandCatalog.invalidate()
+      return status
+    },
+    pickExecutable: () => pickClaudeExecutable(), login: () => openOfficialLogin(), installationHelp: () => openInstallationHelp()
+  })
   registerNamespace('app', {
     ...appNotificationHandlers(focusWindow),
     state: () => {
@@ -168,7 +182,7 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void): v
   })
 
   registerNamespace('usage', {
-    overview: () => overview(),
+    overview: (_e, cwd) => overview(cwd),
     stats: (_e, refresh) => refresh === true ? statistics().refresh() : statistics().get(),
     saveProfile: (_e, key, profile) => {
       if (key !== activeAccountKey) throw new Error('账户信息已变化，请刷新后重试')
@@ -238,6 +252,13 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void): v
     setEffort: (_e, id, effort) => chats.setEffort(id, effort),
     respond: (_e, id, requestId, decision) => chats.respond(id, requestId, decision),
     checkExternal: (_e, id, path) => chats.checkExternal(id, path),
+    handoffToCli: async (_e, id, path) => {
+      const executable = claudeRuntime().path
+      const historyId = await chats.handoffToCli(id, path)
+      const command = posixResumeCommand(executable, path, historyId, process.env.CLAUDE_CONFIG_DIR)
+      clipboard.writeText(command)
+      return command
+    },
     reload: (_e, id, path) => chats.reload(id, path),
     btw: (_e, id, path, question, history, options) => chats.sideQuestion(id, path, question, history, options),
     mcp: (_e, id, path) => chats.mcp(id, path),

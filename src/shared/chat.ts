@@ -10,7 +10,7 @@ export type UiBlock =
       id: string
       name: string
       input: Record<string, unknown>
-      result?: { text: string; isError: boolean }
+      result?: { text: string; isError: boolean; images?: string[] }
     }
   /** 本地斜杠命令（/context、/model…）的输出；output 为 null 表示会话记录里没保存输出 */
   | { kind: 'command'; name: string; args: string; output: string | null }
@@ -63,6 +63,9 @@ export interface ChatActivity {
 }
 
 export type ChatState = 'idle' | 'running' | 'awaiting' | 'error'
+
+/** Ephemeral CLI prediction; never a submitted user message. */
+export interface PromptSuggestion { id: string; text: string }
 
 export interface SessionOptions {
   model: string | null
@@ -117,6 +120,7 @@ export type Decision =
   | { type: 'planRevise'; feedback: string }
 
 export type ChatEvent = (
+  | { kind: 'promptSuggestion'; suggestion: PromptSuggestion | null }
   | { kind: 'options'; options: SessionOptions; optionsSaved?: boolean; optionsSaveError?: string | null }
   | { kind: 'runtime'; runtime: RuntimeSettings }
   | { kind: 'queue'; queue: SessionQueue }
@@ -165,6 +169,7 @@ export interface ContextUsage {
 }
 
 export interface ChatSnapshot {
+  promptSuggestion?: PromptSuggestion | null
   runtime?: RuntimeSettings
   /** 与实时事件共享的会话版本，用于拒绝过期快照。 */
   revision?: number

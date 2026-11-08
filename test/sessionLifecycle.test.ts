@@ -25,6 +25,23 @@ beforeEach(() => {
   manager = new SessionManager(emit)
 })
 afterEach(() => manager.closeAll())
+it('hands off persisted idle history and incorporates CLI additions before the next desktop send', async () => {
+  const original = { type: 'user', uuid: 'first', origin: { kind: 'human' }, message: { content: 'from CLI' } }
+  sdk.getSessionMessages.mockResolvedValue([original])
+  await manager.open('shared', '/tmp')
+  expect(await manager.handoffToCli('shared', '/tmp')).toBe('shared')
+  expect((await manager.open('shared', '/tmp')).live).toBe(false)
+  sdk.getSessionMessages.mockResolvedValue([original, { type: 'user', uuid: 'second', origin: { kind: 'human' }, message: { content: 'CLI continued' } }])
+  await manager.send('shared', '/tmp', 'back in desktop', options)
+  expect((await manager.open('shared', '/tmp')).messages.some(m => m.blocks.some(b => b.kind === 'text' && b.text === 'CLI continued'))).toBe(true)
+  await vi.waitFor(() => expect(sdk.query).toHaveBeenCalledTimes(1))
+  expect(sdk.query.mock.calls[0][0].options.resume).toBe('shared')
+})
+it('does not hand off running or unsaved sessions', async () => {
+  await expect(manager.handoffToCli('unsaved', '/tmp')).rejects.toThrow('尚未保存')
+  const id = manager.start('/tmp', 'working', options)
+  await expect(manager.handoffToCli(id, '/tmp')).rejects.toThrow('等待当前任务')
+})
 it('recreates the SDK query after a stream error and consumes the retry', async () => {
   sdk.query.mockImplementationOnce(() => ({ close: vi.fn(), async *[Symbol.asyncIterator]() { throw new Error('process exited') } }))
   const id = manager.start('/tmp', 'first', options)

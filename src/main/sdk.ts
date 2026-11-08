@@ -1,6 +1,7 @@
 // 整个应用里唯一引入 Claude Agent SDK 的地方。
 // SDK 只提供 ESM，主进程打包成 CJS，所以用动态 import 加载。
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 import type { Options, Query } from '@anthropic-ai/claude-agent-sdk'
 import { app } from 'electron'
 import { adoptLoginShellEnv } from './env'
@@ -43,6 +44,15 @@ export function claudeExecutable(): string | undefined {
     process.resourcesPath,
     'app.asar.unpacked/node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude'
   )
+}
+
+/** Resolve the same bundled engine for status/login commands, including development builds. */
+export function claudeRuntime(): { path: string; source: 'custom' | 'bundled' } {
+  const selected = claudeExecutable()
+  return {
+    path: selected ?? createRequire(join(app.getAppPath(), 'package.json')).resolve(`@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}/claude`),
+    source: store.read().settings.claudePath ? 'custom' : 'bundled'
+  }
 }
 
 /** 不发消息、不持久化，取得结果后立即释放查询。 */

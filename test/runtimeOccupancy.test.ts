@@ -3,9 +3,9 @@ import { SessionManager } from '../src/main/live/SessionManager'
 import { PushQueue } from '../src/main/live/PushQueue'
 import type { SessionRuntimes } from '../src/main/live/SessionRuntimes'
 
-const sdk = vi.hoisted(() => ({ query: vi.fn(), getSessionMessages: vi.fn() }))
+const sdk = vi.hoisted(() => ({ query: vi.fn(), getSessionMessages: vi.fn(), settings: {} as { retainedSessions?: number; sessionIdleMinutes?: number } }))
 vi.mock('../src/main/sdk', () => ({ loadSdk: async () => sdk, claudeExecutable: () => undefined }))
-vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: false } }) }))
+vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: false, ...sdk.settings } }) }))
 const options = { model: null, mode: 'default' as const, effort: null }
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -25,6 +25,7 @@ function query() {
 }
 let manager: SessionManager
 beforeEach(() => {
+  sdk.settings = {}
   sdk.query.mockReset().mockImplementation(query)
   sdk.getSessionMessages.mockReset().mockResolvedValue([])
   manager = new SessionManager(() => {})
@@ -77,6 +78,33 @@ it('keeps the runtime occupied until every concurrent side question finishes', a
   age()
   manager.start('/tmp', 'reclaim idle', options)
   expect(output.close).toHaveBeenCalledOnce()
+})
+
+it('uses updated retention settings on the next sweep and reopens a recycled runtime', async () => {
+  manager.closeAll(); vi.useFakeTimers(); manager = new SessionManager(() => {})
+  sdk.settings = { retainedSessions: 6, sessionIdleMinutes: 30 }
+  const outputs=[]
+  for(let i=0;i<6;i++) outputs.push(await idleSession(`s-${i}`))
+  await vi.advanceTimersByTimeAsync(16*60_000)
+  sdk.settings.retainedSessions=4
+  await vi.advanceTimersByTimeAsync(60_000)
+  expect(outputs.every(q=>q.close.mock.calls.length===0)).toBe(true)
+  await vi.advanceTimersByTimeAsync(14*60_000)
+  expect(outputs[0].close).toHaveBeenCalledOnce()
+  expect(outputs[1].close).toHaveBeenCalledOnce()
+  expect(outputs.slice(2).every(q=>q.close.mock.calls.length===0)).toBe(true)
+  expect((await manager.open('s-0','/tmp')).live).toBe(false)
+  await manager.sideQuestion('s-0','/tmp','continue',[],options)
+  expect((await manager.open('s-0','/tmp')).live).toBe(true)
+})
+it('supports a shorter configured idle threshold without turning the limit into a hard cap', async () => {
+  manager.closeAll(); vi.useFakeTimers(); manager = new SessionManager(() => {})
+  sdk.settings = { retainedSessions: 1, sessionIdleMinutes: 5 }
+  const old=await idleSession('old');await idleSession('recent')
+  await vi.advanceTimersByTimeAsync(4*60_000)
+  expect(old.close).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(2*60_000)
+  expect(old.close).toHaveBeenCalledOnce()
 })
 
 it('protects concurrent restorations before their callers receive the created runtimes', async () => {
@@ -185,6 +213,17 @@ it.each(['commands', 'mcp'] as const)('protects an in-flight %s read using the s
   age()
   manager.start('/tmp', 'reclaim idle', options)
   expect(output.close).toHaveBeenCalledOnce()
+})
+
+it('refuses CLI handoff while a non-serial session operation is pending', async () => {
+  const output = await idleSession()
+  const result = deferred<[]>()
+  output.mcpServerStatus.mockReturnValueOnce(result.promise)
+  const pending = manager.mcp('side', '/tmp')
+  await vi.waitFor(() => expect(output.mcpServerStatus).toHaveBeenCalled())
+  await expect(manager.handoffToCli('side', '/tmp')).rejects.toThrow('会话操作')
+  expect(output.close).not.toHaveBeenCalled()
+  result.resolve([]); await pending
 })
 
 it('protects an idle session while a configuration command awaits SDK confirmation', async () => {

@@ -24,6 +24,8 @@ import { FileContext } from '../files/FileLink'
 import { Composer, PermissionChip } from '../newSession/Composer'
 import { ApprovalCard } from './ApprovalCard'
 import { CommandRecord } from './CommandRecord'
+import { commandNotice } from '@shared/commandNotice'
+import { CommandNotice } from './CommandNotice'
 import { ContextMeter } from './ContextMeter'
 import { useContextUsage } from '../../hooks/useContextUsage'
 import { Markdown } from './Markdown'
@@ -234,6 +236,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
                 setSendError(null)
               }} />}
                 sessionId={sessionId}
+                promptSuggestion={!editing && !hasWaiting ? chat.promptSuggestion : null}
                 sessionState={chat.state}
                 activity={chat.activity}
                 cacheExpiresAt={cacheExpiresAt(chat.messages)}
@@ -320,6 +323,8 @@ function Message({
   onEdit?(text: string): Promise<void>
 }) {
   if (message.role === 'notice') {
+    const notice = message.source !== 'human' && message.source !== 'external' ? commandNotice(blockText(message.blocks), message.source !== 'internal') : null
+    if (notice) return <CommandNotice text={notice} />
     if (isInterruptionNotice(message)) return <div className="my-3 text-[13px] text-fg3">已停止</div>
     if (message.source === 'internal') return <InternalNotice message={message} />
     if (message.source !== 'unknown' && message.originKind === 'task-notification') return <TaskNotice message={message} />

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { closeMetadataQueries, readMetadata } from '../src/main/metadataQuery'
 const sdk = vi.hoisted(()=>({query:vi.fn(), load:vi.fn()}))
 vi.mock('../src/main/sdk',()=>({loadSdk:()=>sdk.load(),claudeExecutable:()=>'/custom/claude'}))
+vi.mock('../src/main/claudeConfigProtocol',()=>({readConfigState:async()=>({effective:{}}),isConfigRecord:(v:unknown)=>!!v && typeof v==='object'}))
 beforeEach(()=>{vi.clearAllMocks();sdk.load.mockResolvedValue(sdk)})
 afterEach(()=>{closeMetadataQueries();vi.useRealTimers()})
 it('returns initialization without consuming or draining a model stream and closes the query', async()=>{

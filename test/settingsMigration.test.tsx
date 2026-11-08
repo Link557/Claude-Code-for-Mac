@@ -21,6 +21,18 @@ beforeEach(() => {
   window.desk = { meta: { cachedModels: vi.fn().mockResolvedValue(null), get: vi.fn().mockResolvedValue({ models: [], claudeVersion: null, subscriptionType: null }), configSnapshot: vi.fn().mockImplementation(async () => snapshot()), config: vi.fn(async (_path, value) => { if (value) { const index = value.indexOf('='); values[value.slice(0, index)] = value.slice(index + 1) }; return value ? 'Saved' : config }) }, chat: { reloadConfiguration: vi.fn().mockResolvedValue(undefined), applySetting: vi.fn().mockResolvedValue(undefined), mcp: vi.fn().mockResolvedValue([{ name: 'files', status: 'connected', tools: 7, scope: 'project' }]) } } as unknown as Window['desk']
 })
 afterEach(cleanup)
+it('distinguishes audited defaults, unknown engine values and managed settings', async () => {
+  vi.mocked(window.desk.meta.configSnapshot).mockResolvedValue({ cliVersion: '2.1.299', items: [
+    { key: 'language', values: [], value: 'default', source: 'default' },
+    { key: 'outputStyle', values: [], value: null, source: 'unknown' },
+    { key: 'autoCompact', values: ['true', 'false'], value: 'true', source: 'default', locked: '由组织策略管理' }
+  ] })
+  render(<ClaudeConfigSettings cwd="/project" />)
+  await screen.findByText('引擎默认 · 未单独设置')
+  expect(screen.getByText('CLI 2.1.299 未提供可确认的生效值')).toBeTruthy()
+  expect(screen.getByText('由组织策略管理')).toBeTruthy()
+  expect(window.desk.meta.config).not.toHaveBeenCalled()
+})
 it('hides editable stale values during refresh and ignores superseded reads', async () => {
   const view = render(<ClaudeConfigSettings cwd="/project" />)
   await screen.findByRole('switch', { name: '自动压缩对话' })
@@ -158,7 +170,7 @@ it('shows the CLI version but not the account when advanced settings are opened'
   vi.mocked(window.desk.meta.get).mockResolvedValue({ models: [], claudeVersion: '2.1.301', subscriptionType: 'pro' })
   useDesk.setState({ view: { kind: 'settings', tab: 'advanced' } })
   render(<SettingsPage />)
-  await screen.findByText('应用内置 v2.1.301')
+  await screen.findByText('应用内置 v2.1.301 · 查看接入状态')
   expect(screen.queryByText('账户')).toBeNull()
 })
 it('does not offer Fast in desktop default model selection', async () => {

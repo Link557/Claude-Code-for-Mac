@@ -29,6 +29,13 @@ vi.mock('node-pty', () => ({ spawn: vi.fn() }))
 vi.mock('../src/main/usageWorkerClient', () => ({ UsageWorkerClient: class {} }))
 
 afterAll(async () => { (await import('../src/main/ipc')).chats.closeAll() })
+it('validates local names and retention limits before persisting settings', () => {
+  expect(() => validators['settings:set']([{ retainedSessions: 0 }])).toThrow()
+  expect(() => validators['settings:set']([{ sessionIdleMinutes: 121 }])).toThrow()
+  expect(() => validators['settings:set']([{ retainedSessions: 1.5 }])).toThrow()
+  expect(() => validators['settings:set']([{ displayName: '\u0001bad' }])).toThrow()
+  expect(validators['settings:set']([{ retainedSessions: 4, sessionIdleMinutes: 15, displayName: '小林' }])).toEqual([{ retainedSessions: 4, sessionIdleMinutes: 15, displayName: '小林' }])
+})
 
 it('registers every invoke channel in the contract exactly once', async () => {
   const { registerIpc } = await import('../src/main/ipc')

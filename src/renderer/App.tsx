@@ -22,6 +22,7 @@ import { AddProjectDialog } from './components/dialogs/AddProjectDialog'
 import { ImportHistoryDialog } from './components/dialogs/ImportHistoryDialog'
 import { SearchDialog } from './components/dialogs/SearchDialog'
 import { SessionSummary } from './components/summary/SessionSummary'
+import { CliHandoff } from './components/chat/CliHandoff'
 
 export function App() {
   const { actionError, clearActionError, ready, view, sessions, sidebarCollapsed, pendingProjectPath, importCandidates, searchOpen, init, toggleSidebar, newChat, setSearchOpen } =
@@ -137,6 +138,7 @@ export function App() {
           {view.kind !== 'settings' && (
             <div className={`ml-auto flex items-center gap-3 ${rightOpen ? 'pr-3' : 'pr-16'}`}>
               {view.kind === 'session' && <SessionSummary sessionId={view.sessionId} projectId={view.projectId} />}
+              {view.kind === 'session' && <CliHandoff key={view.sessionId} sessionId={view.sessionId} projectId={view.projectId} />}
             </div>
           )}
         </div>

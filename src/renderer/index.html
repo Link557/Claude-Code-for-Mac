@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src desk-media:; worker-src 'self' blob:; frame-src 'self' about:" />
     <title>Claude Code</title>
+    <!-- Bound the desktop viewport before styles or React load. Panels own scrolling;
+         the splash's expanding SVG and page scale must not scroll the document. -->
+    <style>html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }</style>
   </head>
   <body>
     <div id="root"></div>

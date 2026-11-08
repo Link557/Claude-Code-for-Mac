@@ -4,6 +4,7 @@ import { SessionActivity, type ActivityState } from './sessionActivity'
 import { sdkMessageSource, sdkOriginKind } from './sdkMessageSource'
 import type { HumanSubmission } from './humanSubmissionRepository'
 import type { TokenUsage, UiBlock, UiMessage } from '../shared/chat'
+import { toolImages } from '../shared/toolImages'
 
 type ToolBlock = Extract<UiBlock, { kind: 'tool' }>
 type Json = Record<string, unknown>
@@ -264,12 +265,16 @@ export class Transcript {
     const texts: string[] = []
     if (typeof content === 'string') texts.push(content)
     else if (Array.isArray(content)) {
+      // Some CLI Read responses place image blocks beside the single tool result.
+      // Multiple results are ambiguous: keep only images explicitly nested in each result.
+      const singleResult = content.filter(c => c?.type === 'tool_result').length === 1
       // 工具结果独立处理，不因来源判断或消息去重而丢掉结果。
       for (const c of content as Json[]) {
         if (c.type === 'tool_result') {
           const tool = this.tools.get(JSON.stringify([parent, String(c.tool_use_id)]))
           if (!tool) continue
-          tool.result = { text: resultText(c.content), isError: c.is_error === true }
+          const images = toolImages([...(Array.isArray(c.content) ? c.content : []), ...(singleResult ? content : [])])
+          tool.result = { text: resultText(c.content), isError: c.is_error === true, ...(images.length ? { images } : {}) }
           for (const msg of this.messages) if (msg.blocks.includes(tool)) this.changed.add(msg)
         } else if (c.type === 'text' && typeof c.text === 'string') texts.push(c.text)
       }
@@ -291,7 +296,7 @@ export class Transcript {
     // 只有已确认的内部消息才解释内部文本格式。未知来源始终原样保留。
     if (source === 'internal' && raw.isCompactSummary !== true) {
       const output = COMMAND_OUTPUT.exec(text.trim())
-      if (output) { this.addCommand(output[2]); return }
+      if (output) { this.addCommand(output[1] === 'stderr' ? output[0] : output[2]); return }
       const command = COMMAND_NAME.exec(text)
       if (command) {
         this.flushCommand()

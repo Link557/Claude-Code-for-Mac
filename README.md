@@ -1,4 +1,4 @@
-# Claude Code for Mac
+# Claude Code for iOS
 
 基于 Electron、React 和 Claude Agent SDK 构建的第三方 macOS 桌面客户端，提供中文界面。此项目不是 Anthropic 官方桌面应用。
 
@@ -6,10 +6,12 @@
 
 ## 下载和安装
 
-在 [Releases](https://github.com/Link557/Claude-Code-for-Mac/releases) 下载最新版本。
+项目保留两个桌面版本：本分支 `main` 为 Mac 版；[Windows 版位于 win 分支](https://github.com/Link557/Claude-Code-for-iOS/tree/win)。
 
-- `Claude-Code-for-Mac-0.3.51-arm64.dmg`：打开后将 `Claude Code.app` 拖到 Applications。
-- `Claude-Code-for-Mac-0.3.51-arm64.zip`：解压后得到同一个应用。
+在 [Releases](https://github.com/Link557/Claude-Code-for-iOS/releases) 下载最新版本。
+
+- `Claude-Code-for-Mac-0.3.52-arm64.dmg`：打开后将 `Claude Code.app` 拖到 Applications。
+- `Claude-Code-for-Mac-0.3.52-arm64.zip`：解压后得到同一个应用。
 - `SHA256SUMS.txt`：安装包 SHA-256 校验值。
 
 当前提供 **Apple Silicon（arm64）** 版本，不支持 Intel Mac。桌面应用使用 ad-hoc 签名，未获 Apple 公证。本机 Gatekeeper 默认检查结果为 `rejected`，通过浏览器下载后，macOS 可能拦截首次打开。
@@ -105,7 +107,7 @@ macOS 红色关闭按钮和 `Command-W` 仅隐藏窗口，聊天、草稿、终�
 ## 项目结构
 
 ```text
-Claude-Code-for-Mac
+Claude-Code-for-iOS
 ├── src
 │   ├── main/                Electron 主进程
 │   │   ├── live/            运行中的会话、回合活动与会话调度

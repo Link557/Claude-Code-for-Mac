@@ -7,7 +7,7 @@ import { readTrackedTaskOutput } from '../taskOutput'
 import { readPermissionRules, readTaskOutput } from '../sessionControlProtocol'
 import type { LiveSetting, PermissionRules, TaskOutput } from '../../shared/sessionControl'
 import { readConfigState } from '../claudeConfigProtocol'
-import type { RuntimeSettings } from '../../shared/chat'
+import type { RuntimeSettings, PromptSuggestion } from '../../shared/chat'
 import { randomUUID } from 'node:crypto'
 import type { HumanSubmission } from '../humanSubmissionRepository'
 import type { CommandInfo } from '../../shared/types'
@@ -60,6 +60,16 @@ export class LiveSession {
   get tasks() { return this.init.transcript.activity.taskTracker.tasks }
   private publishedTasks = '[]'
   runtime: RuntimeSettings = {}
+  promptSuggestion: PromptSuggestion | null = null
+  private suggestionTimer?: ReturnType<typeof setTimeout>
+  private acceptsSuggestion = false
+  private clearSuggestion(): void {
+    clearTimeout(this.suggestionTimer)
+    this.acceptsSuggestion = false
+    if (!this.promptSuggestion) return
+    this.promptSuggestion = null
+    this.init.emit({ kind: 'promptSuggestion', suggestion: null })
+  }
   state: ChatState = 'idle'
   lastActive = Date.now()
   private pending = new Map<string, Pending>()
@@ -120,6 +130,7 @@ export class LiveSession {
           enableFileCheckpointing: true,
           systemPrompt: { type: 'preset', preset: 'claude_code' },
           includePartialMessages: true,
+          promptSuggestions: store.read().settings.promptSuggestions !== false,
           // SDK 会话默认不返回思考文字（只有签名），界面就看不到思考过程；要求返回思考摘要
           extraArgs: { 'thinking-display': 'summarized', 'replay-user-messages': null },
           hooks: {
@@ -175,6 +186,7 @@ export class LiveSession {
 
   send(text: string, uuid: string = randomUUID()): void {
     if (this.closed) throw new Error('会话已结束，请重试')
+    this.clearSuggestion()
     this.lastActive = Date.now()
     const submission = { uuid, text, time: Date.now() }
     this.init.onSubmit?.(submission)
@@ -188,6 +200,7 @@ export class LiveSession {
   }
 
   async interrupt(): Promise<void> {
+    this.clearSuggestion()
     const targets = new Set(this.outstandingInputs)
     this.stopTargets = targets
     this.activity.stop()
@@ -201,6 +214,7 @@ export class LiveSession {
   }
 
   async setMode(mode: SessionOptions['mode']): Promise<void> {
+    this.clearSuggestion()
     if (mode === 'bypassPermissions') {
       if (!store.read().settings.allowBypass) throw new Error('请先在设置中允许选择跳过权限模式')
       if (!this.bypassAllowed) throw new Error('此对话启动时未启用跳过权限，请在高级设置中重新加载当前对话设置')
@@ -209,6 +223,7 @@ export class LiveSession {
   }
 
   async setModel(model: string | null): Promise<void> {
+    this.clearSuggestion()
     await (await this.query()).setModel(model ?? undefined)
   }
 
@@ -370,6 +385,7 @@ export class LiveSession {
   }
 
   close(): void {
+    this.clearSuggestion()
     if (this.closed) return
     this.closed = true
     this.onStartFailed(new Error('会话已关闭'))
@@ -408,6 +424,7 @@ export class LiveSession {
   }
 
   private fail(error: unknown, prefix = '会话出错'): void {
+    this.clearSuggestion()
     this.init.emit({ kind: 'notice', text: `${prefix}：${error instanceof Error ? error.message : String(error)}` })
     this.setState('error')
     this.close()
@@ -471,6 +488,16 @@ export class LiveSession {
 
   private handle(m: SDKMessage): void {
     this.lastActive = Date.now()
+    if (m.type === 'prompt_suggestion') {
+      if (this.acceptsSuggestion && this.state === 'idle' && m.session_id === this.init.sessionId && m.suggestion.trim()) {
+        this.acceptsSuggestion = false
+        this.promptSuggestion = { id: m.uuid, text: m.suggestion.trim() }
+        this.init.emit({ kind: 'promptSuggestion', suggestion: this.promptSuggestion })
+        this.suggestionTimer = setTimeout(() => this.clearSuggestion(), 5 * 60_000)
+        this.suggestionTimer.unref?.()
+      }
+      return
+    }
     if (m.type === 'system' && m.subtype === 'commands_changed') { this.commandsChanged = true; this.publishCommands(m.commands) }
     this.activity.apply(m)
     this.init.transcript.apply(m, 'live')
@@ -487,6 +514,7 @@ export class LiveSession {
       this.runtime.fastModeReason = m.fast_mode_disabled_reason
     }
     if (m.type === 'result') {
+      this.clearSuggestion()
       void this.refreshRuntime()
       this.flush()
       const ids = [...new Set([...this.turnInputIds, ...(m.user_message_uuids ?? []), ...(m.user_message_uuid ? [m.user_message_uuid] : [])])]
@@ -494,6 +522,7 @@ export class LiveSession {
       const userStopped = (m.terminal_reason === 'aborted_streaming' || m.terminal_reason === 'aborted_tools') && ids.some(id => this.stopTargets?.has(id))
       const errors = m.subtype === 'success' ? (m.is_error && m.result ? [m.result] : []) : (m.errors ?? [])
       const failed = m.subtype !== 'success' || m.is_error
+      this.acceptsSuggestion = !failed && !userStopped && (m.queued_turn_count ?? 0) === 0
       const completed = ids.length ? ids : (m.queued_turn_count ?? 0) === 0 ? [...this.configCommands] : []
       this.configChanged(!failed && completed.some(id => this.configCommands.has(id)))
       for (const id of completed) this.configCommands.delete(id)
