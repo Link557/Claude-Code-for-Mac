@@ -35,6 +35,9 @@ export interface ModelOption {
 export interface Settings {
   /** Local display preference, independent of CLI authentication and provider. */
   displayName?: string | null
+  /** Desktop process retention only; never written to Claude Code settings. */
+  retainedSessions?: number
+  sessionIdleMinutes?: number
   theme: Theme
   defaultModel: string
   defaultPermissionMode: PermissionMode

@@ -189,6 +189,10 @@ button {
   to { opacity: 0; }
 }
 .animate-pop-in { animation: pop-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: bottom right; }
+@keyframes summary-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+}
+.animate-summary-in { animation: summary-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top right; }
 .animate-bar-grow { animation: bar-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.08s both; }
 .animate-fade-up { animation: fade-up 0.25s ease-out both; }
 .animate-fade-in { animation: fade-in 0.2s ease-out 0.15s both; }
@@ -288,7 +292,7 @@ button {
 .animate-menu-in > * { animation: fade-up 0.18s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-pop-in, .animate-bar-grow, .animate-fade-up, .animate-fade-in, .animate-menu-in, .animate-menu-in > *,
+  .animate-pop-in, .animate-summary-in, .animate-bar-grow, .animate-fade-up, .animate-fade-in, .animate-menu-in, .animate-menu-in > *,
   .crab, .crab *, .composer-crab-shimmer { animation: none !important; }
   .btw-intro-in, .btw-intro-out { animation: none; }
   .btw-intro-out { opacity: 0; }

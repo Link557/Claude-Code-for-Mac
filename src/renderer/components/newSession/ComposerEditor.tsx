@@ -157,7 +157,7 @@ interface EditorProps {
   onChange(value: string, text: string, caret: number): void
   /** 按键交给输入框处理（建议列表、回车发送）；返回 true 表示已处理 */
   onKey(event: KeyboardEvent): boolean
-  placeholder: string
+  placeholder: ReactNode
   rows: number
   autoFocus?: boolean
   cwd?: string
@@ -285,7 +285,7 @@ function Editor({ onFiles, value, onChange, onKey, placeholder, rows, autoFocus,
             className="block max-h-[260px] w-full overflow-y-auto px-4 pt-3.5 pb-1 text-[14.5px] leading-6 break-words whitespace-pre-wrap outline-none select-text"
           />
         }
-        placeholder={<div className="pointer-events-none absolute top-3.5 left-4 text-[14.5px] leading-6 text-fg3 select-none">{placeholder}</div>}
+        placeholder={<div className="pointer-events-none absolute top-3.5 left-4 right-4 text-[14.5px] leading-6 text-fg3 select-none">{placeholder}</div>}
         ErrorBoundary={LexicalErrorBoundary}
       />
       <HistoryPlugin />

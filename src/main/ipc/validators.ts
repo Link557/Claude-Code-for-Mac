@@ -67,6 +67,8 @@ const decision = arg('decision', z.discriminatedUnion('type', [
 
 const settingsPatch = arg('patch', z.object({
   displayName: z.string().trim().min(1).max(20).regex(/^[^\p{Cc}\p{Cf}]+$/u).nullable(),
+  retainedSessions: z.number().int().min(1).max(16),
+  sessionIdleMinutes: z.number().int().min(1).max(120),
   theme: z.enum(['system', 'light', 'dark']),
   defaultModel: z.string(),
   defaultPermissionMode: permissionMode,
@@ -123,6 +125,7 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'app:setDockBadge': args(arg('count', z.number().int().min(0), '无效未读数量')),
   'app:openNotificationSettings': args(),
   'app:state': args(),
+  'app:splashFinished': args(),
   'app:focus': args(),
   'connection:status': args(optionalText('path')),
   'connection:pickExecutable': args(),

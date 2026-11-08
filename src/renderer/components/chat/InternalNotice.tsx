@@ -1,5 +1,7 @@
 import type { UiMessage } from '@shared/chat'
 import { internalNoticeKind, parseTaskNotification } from '@shared/internalNotice'
+import { commandNotice } from '@shared/commandNotice'
+import { CommandNotice } from './CommandNotice'
 const textOf = (message: UiMessage) => message.blocks.filter(b => b.kind === 'text').map(b => b.text).join('\n')
 
 export function TechnicalRecords({ messages }: { messages: UiMessage[] }) {
@@ -15,6 +17,8 @@ export function TechnicalRecords({ messages }: { messages: UiMessage[] }) {
 }
 
 export function InternalNotice({ message }: { message: UiMessage }) {
+  const notice = commandNotice(textOf(message))
+  if (notice) return <CommandNotice text={notice} />
   const kind = internalNoticeKind(message)
   if (kind === 'command') return null
   if (kind === 'technical') return <TechnicalRecords messages={[message]} />

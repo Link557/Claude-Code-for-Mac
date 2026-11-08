@@ -34,7 +34,7 @@ export function ConnectionSettings({ cwd }: { cwd?: string }) {
     try { await fn() } catch (failure) { setError(errorText(failure)) }
     finally { setBusy(false) }
   }
-  return <Section title="Claude Code 官方接入">
+  return <Section title="Claude Code 接入">
     <p className="px-4 py-3 text-[13px] text-fg2">沿用本机 Claude Code 的登录和配置。检测不会发送对话，也不会修改 CLI 配置。Windows 首选已安装的原生 CLI，未找到时使用应用内置引擎。</p>
     <Row label="接入状态"><span role="status">{busy ? '正在检测…' : status ? statusLabel(status) : '尚未取得状态'}</span></Row>
     <Row label="运行引擎"><span className="text-fg2">{status?.source === 'installed' ? '本机已安装' : status?.source === 'custom' ? '手动选择' : status?.source === 'bundled' ? '应用内置' : '未找到'}</span></Row>
@@ -43,7 +43,7 @@ export function ConnectionSettings({ cwd }: { cwd?: string }) {
     {status?.configDirectory && <Row label="共享配置与历史"><span className="max-w-[460px] break-all text-[12px] text-fg2">{status.configDirectory}</span></Row>}
     {status?.authMethod && <Row label="认证方式"><span>{status.authMethod === 'claude.ai' ? 'Claude 账号登录' : status.authMethod === 'api_key' ? 'API 密钥' : status.authMethod}</span></Row>}
     {status?.loggedIn && status.provider === 'firstParty' && <p className="px-4 py-2 text-[12px] text-fg2">已读取本机认证；实际网络连通性和模型可用性以发送消息后的结果为准。</p>}
-    {status?.provider && status.provider !== 'firstParty' && <p className="px-4 py-2 text-[12px] text-fg2">检测到其他供应商配置，本次没有覆盖它。登录账号不一定改变供应商路由，请先在 CLI 中确认官方接入配置。</p>}
+    {status?.provider && status.provider !== 'firstParty' && <p className="px-4 py-2 text-[12px] text-fg2">正在沿用其他供应商配置。模型权限、额度和计费由该供应商决定；Claude 官方登录不代表这些模型可用。</p>}
     <div className="flex flex-wrap gap-2 px-4 py-3">
       <button disabled={busy} className={settingsButtonClass} onClick={() => setRevision(value => value + 1)}>重新检测</button>
       <button disabled={busy || !status?.executable} className={settingsButtonClass} onClick={() => void action(async () => {

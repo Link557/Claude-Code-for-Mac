@@ -1,9 +1,13 @@
 import { SquareTerminal } from 'lucide-react'
 import type { CommandBlock } from '@shared/chat'
 import { commandText } from '@shared/commands'
+import { commandNotice } from '@shared/commandNotice'
+import { CommandNotice } from './CommandNotice'
 
 /** 对话里的本地命令只留一行细记录，点开重新弹出浮层 */
 export function CommandRecord({ block, onOpen }: { block: CommandBlock; onOpen(): void }) {
+  const notice = block.output ? commandNotice(block.output) : null
+  if (notice) return <CommandNotice text={notice} />
   const line = block.output !== null && !block.output.includes('\n') ? block.output : null
   return (
     <button

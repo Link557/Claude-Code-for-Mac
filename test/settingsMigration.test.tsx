@@ -285,3 +285,16 @@ it('reports native test delivery and provides a system-settings shortcut', async
   fireEvent.click(screen.getByRole('button', { name: '打开系统设置' }))
   expect(openNotificationSettings).toHaveBeenCalledOnce()
 })
+
+it('exposes local retention defaults and saves them without writing CLI configuration', async () => {
+ const updateSettings=vi.fn().mockResolvedValue(undefined)
+ useDesk.setState({view:{kind:'settings',tab:'general'},updateSettings})
+ render(<SettingsPage />)
+ expect((screen.getByLabelText('驻留会话保留数量') as HTMLSelectElement).value).toBe('4')
+ expect((screen.getByLabelText('超额会话闲置回收时间') as HTMLSelectElement).value).toBe('15')
+ fireEvent.change(screen.getByLabelText('驻留会话保留数量'),{target:{value:'6'}})
+ await waitFor(()=>expect(updateSettings).toHaveBeenCalledWith({retainedSessions:6}))
+ fireEvent.change(screen.getByLabelText('超额会话闲置回收时间'),{target:{value:'30'}})
+ await waitFor(()=>expect(updateSettings).toHaveBeenCalledWith({sessionIdleMinutes:30}))
+ expect(window.desk.meta.config).not.toHaveBeenCalled()
+})

@@ -43,7 +43,7 @@ if (process.argv.includes('--probe')) {
   app.whenReady().then(() => {
     const theme = process.env.CLAUDE_DESK_THEME as 'light' | 'dark' | undefined
     applyTheme(theme ?? store.read().settings.theme)
-    registerIpc(demo, () => window.open())
+    registerIpc(demo, () => window.open(), () => window.finishSplash())
     registerWorkspaceIpc()
     handleMediaProtocol()
     if (!demo) scheduler.startTimer()

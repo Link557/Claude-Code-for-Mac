@@ -9,6 +9,8 @@ export class AppWindow {
   private quitting = false
   private cleaned = false
   private visibleWanted = true
+  private restoreSplashControls: (() => void) | null = null
+  finishSplash(): void { this.restoreSplashControls?.() }
   constructor(private cleanup: () => void) {
     app.on('activate', () => this.open())
     app.on('second-instance', () => this.open())
@@ -50,11 +52,26 @@ export class AppWindow {
     const win = new BrowserWindow({
       width: 1280, height: 820, minWidth: 960, minHeight: 600,
       ...(process.platform === 'win32' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.ico') : join(__dirname, '../../build/icon.ico') } : {}),
-      ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : process.platform === 'win32' ? { titleBarStyle: 'hidden' as const, titleBarOverlay: titleBarColors(), autoHideMenuBar: true } : { autoHideMenuBar: true }),
-      backgroundColor: nativeTheme.shouldUseDarkColors ? '#262624' : '#ffffff', show: false,
+      ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : process.platform === 'win32' ? { titleBarStyle: 'hidden' as const, titleBarOverlay: { color: '#00000000', symbolColor: '#00000000', height: 40 }, autoHideMenuBar: true } : { autoHideMenuBar: true }),
+      backgroundColor: process.platform === 'win32' ? '#d97757' : nativeTheme.shouldUseDarkColors ? '#262624' : '#ffffff', show: false,
       webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
     })
     if (process.platform === 'win32') {
+      // Keep native caption glyphs and hover backgrounds out of the splash.
+      // Disabling the window briefly prevents invisible caption hit targets.
+      win.setEnabled(false)
+      let splashActive = true
+      const restore = () => {
+        if (!splashActive || win.isDestroyed()) return
+        splashActive = false
+        clearTimeout(fallback)
+        win.setTitleBarOverlay(titleBarColors())
+        win.setEnabled(true)
+        if (win.isVisible() && this.visibleWanted) win.focus()
+      }
+      const fallback = setTimeout(restore, 10_000)
+      this.restoreSplashControls = restore
+      win.once('closed', () => { clearTimeout(fallback); if (this.restoreSplashControls === restore) this.restoreSplashControls = null })
       // Give the shell the full ICO resource instead of relying on the window's
       // small-icon fallback, which renders undersized in the Windows 11 taskbar.
       if (app.isPackaged) win.setAppDetails({
@@ -64,7 +81,7 @@ export class AppWindow {
         relaunchCommand: `"${process.execPath}"`,
         relaunchDisplayName: 'Claude Code'
       })
-      const updateTitleBar = () => { if (!win.isDestroyed()) win.setTitleBarOverlay(titleBarColors()) }
+      const updateTitleBar = () => { if (!splashActive && !win.isDestroyed()) win.setTitleBarOverlay(titleBarColors()) }
       nativeTheme.on('updated', updateTitleBar)
       win.once('closed', () => nativeTheme.removeListener('updated', updateTitleBar))
     }

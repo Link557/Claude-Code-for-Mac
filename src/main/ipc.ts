@@ -99,7 +99,7 @@ export function projectMetadata(cwd: string) {
 }
 
 
-export function registerIpc(demo: DemoState | null, focusWindow?: () => void): void {
+export function registerIpc(demo: DemoState | null, focusWindow?: () => void, finishSplash?: () => void): void {
   registerNamespace('connection', {
     status: async (_e, path) => {
       const status = await connectionStatus(path)
@@ -112,6 +112,7 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void): v
     installationHelp: () => openInstallationHelp()
   })
   registerNamespace('app', {
+    splashFinished: () => finishSplash?.(),
     ...appNotificationHandlers(focusWindow),
     state: () => {
       let username: string | null = null

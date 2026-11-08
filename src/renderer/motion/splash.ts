@@ -153,4 +153,5 @@ function cleanup(): void {
   if (els?.page) els.page.style.transform = ''
   els?.root.remove()
   els = undefined
+  void window.desk?.app.splashFinished?.().catch(error => console.error('无法恢复窗口控制按钮', error))
 }

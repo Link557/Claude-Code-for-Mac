@@ -64,6 +64,9 @@ export interface ChatActivity {
 
 export type ChatState = 'idle' | 'running' | 'awaiting' | 'error'
 
+/** Ephemeral CLI prediction; never a submitted user message. */
+export interface PromptSuggestion { id: string; text: string }
+
 export interface SessionOptions {
   model: string | null
   mode: PermissionMode
@@ -117,6 +120,7 @@ export type Decision =
   | { type: 'planRevise'; feedback: string }
 
 export type ChatEvent = (
+  | { kind: 'promptSuggestion'; suggestion: PromptSuggestion | null }
   | { kind: 'options'; options: SessionOptions; optionsSaved?: boolean; optionsSaveError?: string | null }
   | { kind: 'runtime'; runtime: RuntimeSettings }
   | { kind: 'queue'; queue: SessionQueue }
@@ -165,6 +169,7 @@ export interface ContextUsage {
 }
 
 export interface ChatSnapshot {
+  promptSuggestion?: PromptSuggestion | null
   runtime?: RuntimeSettings
   /** 与实时事件共享的会话版本，用于拒绝过期快照。 */
   revision?: number

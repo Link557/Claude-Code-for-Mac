@@ -40,7 +40,7 @@ export function SessionSummary({ sessionId, projectId }: { sessionId: string; pr
     <button type="button" aria-label="切换摘要面板状态" title={running.length ? `会话摘要 · ${running.length} 个后台任务运行中` : '会话摘要'} aria-expanded={opened} onClick={() => useSummaryUi.getState().toggle(sessionId)}
       className={`session-toolbar-button relative ${opened ? 'bg-active text-fg' : 'text-fg2 hover:bg-hover'}`}>
       {running.length > 0 && <span aria-hidden="true" data-task-badge className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium tabular-nums leading-none text-white ring-2 ring-bg">{running.length}</span>}<span aria-hidden="true" data-summary-note className="inline-block size-[23px] shrink-0 bg-current" style={{ mask: `url("${summaryNote}") center / contain no-repeat`, WebkitMask: `url("${summaryNote}") center / contain no-repeat` }} /></button>
-    {opened && <section aria-label="会话摘要" className="absolute right-0 top-full z-40 mt-3 max-h-[calc(100vh-100px)] w-[340px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-2xl border border-line-strong bg-card p-5 shadow-pop animate-pop-in [transform-origin:top_right]">
+    {opened && <section aria-label="会话摘要" className="absolute right-0 top-full z-40 mt-3 max-h-[calc(100vh-100px)] w-[340px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-2xl border border-line-strong bg-card p-5 shadow-pop animate-summary-in">
       <h2 className="mb-3 truncate text-[14px] font-medium text-fg2" title={project?.path}>{project?.name ?? '当前会话'}</h2>
       {tasks.length > 0 && <SummaryTasks sessionId={sessionId} projectId={projectId} tasks={tasks} />}
       <div className="border-t border-line py-2">

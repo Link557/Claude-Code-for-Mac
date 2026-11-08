@@ -56,6 +56,7 @@ export const contract = {
     onState: event<[id: string, state: BrowserState]>()
   },
   app: {
+    splashFinished: invoke<[]>(),
     notify: invoke<[title: string, body: string, silent: boolean, sessionId?: string]>(),
     /** Dock 角标显示的未读会话数，0 时清除 */
     setDockBadge: invoke<[count: number]>(),

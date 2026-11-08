@@ -19,9 +19,6 @@ import { SessionPreferencesState } from './SessionPreferencesState'
 import type { ActivityRepository } from '../activityRepository'
 import type { HumanSubmissionRepository } from '../humanSubmissionRepository'
 
-const MAX_LIVE = 4
-const IDLE_MS = 15 * 60_000
-
 interface CommandObserver {
   configuration(): string
   publisher(cwd: string): (commands: CommandInfo[]) => void
@@ -92,6 +89,7 @@ export class SessionManager {
       ...this.preferences.persistence(sessionId),
       revision: this.revisions.get(sessionId) ?? 0,
       runtime: session?.runtime,
+      promptSuggestion: session?.promptSuggestion ?? null,
       activity: session?.activity.snapshot(),
       summary: transcript.activity.snapshot(),
       tasks: session?.backgroundTasks() ?? [],
@@ -681,16 +679,17 @@ export class SessionManager {
   }
 
   /**
-   * 运行中的会话超过 MAX_LIVE 个时，才回收闲置超过 IDLE_MS 的会话，从最久没用的开始。
+   * 驻留实例超出本机设置时，才回收已达到闲置时长的会话，从最久没用的开始。
    * 没超出上限就全部保留；超出但都没闲置够时，暂时允许多开，等下一轮再回收。
    * reserve 是即将新建、还没登记的会话数。
    */
   private recycle(reserve = 0): void {
-    const excess = this.live.size + reserve - MAX_LIVE
+    const settings = store.read().settings
+    const excess = this.live.size + reserve - (settings.retainedSessions ?? 4)
     if (excess <= 0) return
     const now = Date.now()
     const stale = this.live.idle()
-      .filter(([, s]) => now - s.lastActive > IDLE_MS)
+      .filter(([, s]) => now - s.lastActive > (settings.sessionIdleMinutes ?? 15) * 60_000)
       .sort((a, b) => a[1].lastActive - b[1].lastActive)
     for (const [id] of stale.slice(0, excess)) this.closeSession(id)
   }
