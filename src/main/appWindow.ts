@@ -55,6 +55,15 @@ export class AppWindow {
       webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
     })
     if (process.platform === 'win32') {
+      // Give the shell the full ICO resource instead of relying on the window's
+      // small-icon fallback, which renders undersized in the Windows 11 taskbar.
+      if (app.isPackaged) win.setAppDetails({
+        appId: 'local.nature.claude-desk.windows',
+        appIconPath: join(process.resourcesPath, 'icon.ico'),
+        appIconIndex: 0,
+        relaunchCommand: `"${process.execPath}"`,
+        relaunchDisplayName: 'Claude Code'
+      })
       const updateTitleBar = () => { if (!win.isDestroyed()) win.setTitleBarOverlay(titleBarColors()) }
       nativeTheme.on('updated', updateTitleBar)
       win.once('closed', () => nativeTheme.removeListener('updated', updateTitleBar))

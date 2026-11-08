@@ -1,8 +1,26 @@
 // 套餐用量：和终端里 /usage 看到的一样。SDK 的这个接口还标着「实验性」，以后版本可能会改名。
 import { homedir } from 'node:os'
-import type { Query, SDKControlGetUsageResponse } from '@anthropic-ai/claude-agent-sdk'
+import type { AccountInfo, Query, SDKControlGetUsageResponse } from '@anthropic-ai/claude-agent-sdk'
 import type { PlanUsage, UsageWindow } from '../shared/types'
 import { withIdleQuery } from './sdk'
+import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
+
+/** Gateway/cloud quota is not the signed-in Claude account's subscription quota. */
+export function hasOfficialQuotaRoute(account: AccountInfo, env: Record<string, unknown>): boolean {
+  if (account.apiProvider && account.apiProvider !== 'firstParty') return false
+  const base = env.ANTHROPIC_BASE_URL
+  if (typeof base !== 'string' || !base.trim()) return true
+  try { return new URL(base).origin === 'https://api.anthropic.com' }
+  catch { throw new Error('模型接入地址无效，请检查 Claude Code 配置') }
+}
+
+export async function readPlanUsage(q: Query, account: AccountInfo): Promise<PlanUsage> {
+  if (account.apiProvider && account.apiProvider !== 'firstParty') return { subscriptionType: null, available: false, windows: [] }
+  const config = await readConfigState(q)
+  const env = { ...process.env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) }
+  if (!hasOfficialQuotaRoute(account, env)) return { subscriptionType: null, available: false, windows: [] }
+  return toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
+}
 
 type Window = { utilization: number | null; resets_at: string | null } | null | undefined
 
@@ -37,7 +55,5 @@ export function withUsageQuery<T>(fn: (q: Query) => Promise<T>): Promise<T> {
 }
 
 export function planUsage(): Promise<PlanUsage> {
-  return withUsageQuery(async (q) =>
-    toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
-  )
+  return withUsageQuery(async q => readPlanUsage(q, await q.accountInfo()))
 }

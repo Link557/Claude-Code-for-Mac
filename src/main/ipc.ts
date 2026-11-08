@@ -10,7 +10,7 @@ import { SessionManager } from './live/SessionManager'
 import * as files from './files'
 import { gitDiff } from './gitDiff'
 import * as meta from './meta'
-import { planUsage, toPlanUsage, withUsageQuery } from './usage'
+import { planUsage, readPlanUsage, withUsageQuery } from './usage'
 import { claudeRuntime } from './sdk'
 import { UsageWorkerClient } from './usageWorkerClient'
 import { UsageProfiles, usageAccount } from './usageProfile'
@@ -45,11 +45,12 @@ let activeAccountKey: string | null = null
 function overview(): Promise<UsageOverview> {
   if (overviewRequest) return overviewRequest
   overviewRequest = withUsageQuery(async q => {
-    const account = usageAccount(await q.accountInfo())
+    const identity = await q.accountInfo()
+    const account = usageAccount(identity)
     activeAccountKey = account.key
     const profile = await profiles().get(account)
     try {
-      const usage = toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
+      const usage = await readPlanUsage(q, identity)
       // 睡眠唤醒、网络未就绪时接口可能"成功"但不带任何窗口；按失败处理，渲染端会保留上次结果并退避重试。
       if (usage.available && !usage.windows.length) return { account, usage: null, usageError: '额度接口未返回数据', profile, updatedAt: Date.now() }
       return { account, usage, profile, updatedAt: Date.now() }

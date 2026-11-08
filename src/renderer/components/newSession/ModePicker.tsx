@@ -35,6 +35,8 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
   useEffect(() => { if (runtime && !runtime.error) setRetryError(null) }, [runtime])
   const demo = useDesk(s => s.demo)
   const { models, loading, error, retry } = useModelCatalog(cwd)
+  const hasFable = models.some(m => m.value === 'fable' || /^claude-fable-/i.test(m.value) || /^fable(?:\s|$)/i.test(m.label))
+  const fableReason = loading ? '正在读取 Fable 配置…' : error ? '无法确认可用性，请重试读取模型' : '当前 CLI 未提供 Fable 或有效映射，请检查接入配置'
   type Kind = 'model' | 'effort'
   const [open, setOpen] = useState<Kind | null>(demo?.openMenu === 'model' || demo?.openMenu === 'effort' ? demo.openMenu : null)
   const ref = useRef<HTMLDivElement>(null)
@@ -96,6 +98,7 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
 
           {modelMenu ? <div>
             {inline !== 'fast' && models.map(m => <button key={m.value} aria-label={m.label} disabled={busy} aria-pressed={requestedModel?.value===m.value} className="picker-option" onClick={() => choose({model:m.value})}><span className="model-choice-name min-w-0 break-all">{m.label}{m.resolvedModel && m.resolvedModel !== m.label && <small>{m.resolvedModel}</small>}</span>{requestedModel?.value===m.value && <Check size={14}/>}</button>)}
+            {inline !== 'fast' && !hasFable && <button type="button" disabled aria-label="Fable" title={fableReason} className="picker-option opacity-50 cursor-not-allowed"><span className="model-choice-name">Fable<small>{fableReason}</small></span></button>}
             {inline !== 'defaultModel' && <div className="picker-option picker-divider fast-option"><span className="model-choice-name flex items-center gap-2">Fast<WingedShoe/></span>
               <span className="fast-checkbox">
                 <input type="checkbox" aria-label="Fast" aria-describedby={fastHintId} checked={fast} disabled={busy || !fastKnown}

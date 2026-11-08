@@ -33,6 +33,8 @@ export interface ModelOption {
 }
 
 export interface Settings {
+  /** Local display preference, independent of CLI authentication and provider. */
+  displayName?: string | null
   theme: Theme
   defaultModel: string
   defaultPermissionMode: PermissionMode

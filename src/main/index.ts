@@ -13,7 +13,7 @@ import { handleMediaProtocol, registerMediaScheme } from './mediaProtocol'
 
 // 应用数据放在独立目录，开发截图时可用 CLAUDE_DESK_USERDATA 指向临时目录
 app.setPath('userData', process.env.CLAUDE_DESK_USERDATA ?? join(app.getPath('appData'), 'claude-desk'))
-if (process.platform === 'win32') app.setAppUserModelId('local.nature.claude-desk')
+if (process.platform === 'win32') app.setAppUserModelId('local.nature.claude-desk.windows')
 
 const demo: DemoState | null = process.env.CLAUDE_DESK_DEMO ? JSON.parse(process.env.CLAUDE_DESK_DEMO) : null
 

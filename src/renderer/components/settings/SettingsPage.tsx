@@ -2,6 +2,7 @@ import { ModePicker } from '../newSession/ModePicker'
 import { SessionControlsPane } from '../right/SessionControlsPane'
 import { ClaudeConfigSettings } from './ClaudeConfigSettings'
 import { ConnectionSettings } from './ConnectionSettings'
+import { DisplayNameEditor } from './DisplayNameEditor'
 import { Row, Section, Toggle, settingsInputClass, settingsButtonClass } from './SettingsControls'
 import { useEffect, useState } from 'react'
 import type { MetaInfo, Settings, Theme } from '@shared/types'
@@ -61,6 +62,7 @@ export function SettingsPage() {
     {projectSettings && <Section title="项目上下文">
       <Row label={<label htmlFor="settings-project">项目</label>}><select id="settings-project" value={project?.id ?? ''} onChange={e => setView({ ...route, projectId: e.target.value || null, sessionId: null })} className={settingsInputClass}><option value="">用户目录</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Row>
     </Section>}
+    {(tab === 'general' || tab === 'connection') && <Section title="个人展示"><Row label="显示名称"><DisplayNameEditor compact /></Row></Section>}
     {tab === 'connection' && <ConnectionSettings cwd={cwd} />}
     {tab === 'general' && <Section title="界面与交互">
       <Row label="主题"><Segmented options={THEMES} value={settings.theme} onChange={theme => saveSettings({ theme })} /></Row>

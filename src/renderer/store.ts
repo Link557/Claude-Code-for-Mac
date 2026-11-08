@@ -66,7 +66,7 @@ export function refreshSessionsInBackground(projectId?: string): void {
 
 function chooseGreeting(state: DeskState): string {
   const { overview, error } = useUsage.getState()
-  return nextGreeting(greetingName(overview?.profile.name, overview?.account.email, overview || error ? state.username : null))
+  return nextGreeting(greetingName(state.settings?.displayName ?? overview?.profile.name, overview?.account.email, overview || error ? state.username : null))
 }
 
 export const useDesk = create<DeskState>((set, get) => ({
@@ -97,7 +97,7 @@ export const useDesk = create<DeskState>((set, get) => ({
       home: state.home,
       username: state.username ?? null,
       greetingSelected: !!projects.length && demo?.route !== 'settings',
-      greeting: projects.length && demo?.route !== 'settings' ? nextGreeting(null) : FALLBACK_GREETING,
+      greeting: projects.length && demo?.route !== 'settings' ? nextGreeting(greetingName(settings.displayName, null, null)) : FALLBACK_GREETING,
       demo,
       projects,
       settings,

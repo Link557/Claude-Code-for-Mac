@@ -66,6 +66,7 @@ const decision = arg('decision', z.discriminatedUnion('type', [
 ]))
 
 const settingsPatch = arg('patch', z.object({
+  displayName: z.string().trim().min(1).max(20).regex(/^[^\p{Cc}\p{Cf}]+$/u).nullable(),
   theme: z.enum(['system', 'light', 'dark']),
   defaultModel: z.string(),
   defaultPermissionMode: permissionMode,

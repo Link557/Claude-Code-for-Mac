@@ -6,8 +6,8 @@ beforeEach(()=>{vi.clearAllMocks();sdk.load.mockResolvedValue(sdk)})
 afterEach(()=>{closeMetadataQueries();vi.useRealTimers()})
 it('returns initialization without consuming or draining a model stream and closes the query', async()=>{
   const close=vi.fn(), iterator=vi.fn()
-  sdk.query.mockReturnValue({initializationResult:async()=>({commands:[]}),close,[Symbol.asyncIterator]:iterator})
-  await expect(readMetadata('/a')).resolves.toEqual({commands:[]})
+  sdk.query.mockReturnValue({initializationResult:async()=>({commands:[],models:[]}),request:async()=>({response:{effective:{},sources:[]}}),close,[Symbol.asyncIterator]:iterator})
+  await expect(readMetadata('/a')).resolves.toEqual({commands:[],models:[]})
   expect(iterator).not.toHaveBeenCalled();expect(close).toHaveBeenCalledTimes(1)
   const request=sdk.query.mock.calls[0][0]
   expect(request.options).toMatchObject({cwd:'/a',persistSession:false,pathToClaudeCodeExecutable:'/custom/claude'})

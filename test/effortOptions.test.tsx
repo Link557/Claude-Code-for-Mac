@@ -185,3 +185,21 @@ it('keeps retry failures visible in one message without rejecting into the UI', 
   expect(screen.getAllByRole('button', { name: '重试' })).toHaveLength(1)
   await screen.findByRole('button', { name: '高' })
 })
+
+it('keeps an omitted Fable visible but disabled with a configuration reason', async () => {
+  render(<Harness />)
+  fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
+  await screen.findByText('当前 CLI 未提供 Fable 或有效映射，请检查接入配置')
+  expect((screen.getByRole('button', { name: 'Fable' }) as HTMLButtonElement).disabled).toBe(true)
+})
+it('allows a mapped Fable without a subscription and sends the configured model ID', async () => {
+  vi.mocked(window.desk.meta.get).mockResolvedValue(meta([{ value: 'deepseek-chat', label: 'Fable', resolvedModel: 'deepseek-chat', efforts: [] }]))
+  const change = vi.fn()
+  render(<ModePicker options={{ model: 'opus', mode: 'default', effort: null }} onChange={change} />)
+  fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
+  await screen.findByText('deepseek-chat')
+  const button = screen.getByRole('button', { name: 'Fable' }) as HTMLButtonElement
+  expect(button.disabled).toBe(false)
+  fireEvent.click(button)
+  expect(change).toHaveBeenCalledWith({ model: 'deepseek-chat' })
+})

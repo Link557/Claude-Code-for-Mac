@@ -1,5 +1,6 @@
 // Run with: node scripts/launch.cjs electron scripts/windows-icon.cjs
-// Keep the Mac artwork, fitting its nontransparent bounds to Windows icon slots.
+// Keep the Mac artwork's proportions; fit the solid tile, not its faint outer
+// shadow, to Windows taskbar slots (the shadow otherwise consumes icon space).
 const { app, nativeImage } = require('electron')
 const { readFileSync, writeFileSync } = require('node:fs')
 const { resolve } = require('node:path')
@@ -21,9 +22,11 @@ const original = nativeImage.createFromBuffer(sizes.get(256))
 const bitmap = original.toBitmap()
 let left = 256, top = 256, right = 0, bottom = 0
 for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
-  if (bitmap[(y * 256 + x) * 4 + 3] > 0) { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y) }
+  if (bitmap[(y * 256 + x) * 4 + 3] >= 240) { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y) }
 }
-const fitted = original.crop({ x: left, y: top, width: right - left + 1, height: bottom - top + 1 })
+// Square crop preserves the aspect ratio of the tile and its internal mark.
+const edge = Math.max(right - left + 1, bottom - top + 1)
+const fitted = original.crop({ x: Math.floor((left + right + 1 - edge) / 2), y: Math.floor((top + bottom + 1 - edge) / 2), width: edge, height: edge })
 const layers = [16, 24, 32, 48, 64, 128, 256].map(size => [size, fitted.resize({ width: size, height: size, quality: 'best' }).toPNG()])
 const header = Buffer.alloc(6 + layers.length * 16)
 header.writeUInt16LE(1, 2); header.writeUInt16LE(layers.length, 4)
