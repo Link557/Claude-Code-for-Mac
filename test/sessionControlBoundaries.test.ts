@@ -58,6 +58,8 @@ it.each(['reload', 'rewind', 'restore'] as const)('protects background tasks dur
 it('uses the same run version for the task pane, summary and busy policy', async () => {
   const { id, q } = await idle()
   await background(id, q)
+  // 摘要只接受有证据的子 Agent 关联；未关联任务仍由 busy policy 跟踪。
+  q.push({ type: 'system', subtype: 'task_progress', task_id: 'agent', run_id: 'b', tool_use_id: 'agent-tool', task_type: 'local_agent' })
   q.push({ type: 'system', subtype: 'task_notification', task_id: 'agent', run_id: 'a', status: 'completed', summary: 'stale result' })
   // A following read waits until this marker has been consumed, without sleeping for a guessed interval.
   q.push({ type: 'system', subtype: 'task_progress', task_id: 'agent', run_id: 'b', description: 'marker' })
