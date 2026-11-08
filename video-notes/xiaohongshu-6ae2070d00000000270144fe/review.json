@@ -1,37 +1,38 @@
 {
   "material_revision": "aeccc209e91b8c7a5969bcf21250ec0303d6c7c504d9c77d066541e25cea15ed",
   "transcript": {
-    "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.json",
+    "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.json",
     "sha256": "52b91e85bd7f873f3b0f089fee5a335fdbb5c5d9b2c69ebffdae6627d35ded4e"
   },
   "viewed_images": [
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-001.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-001.jpg",
       "sha256": "2a76dc5cad445b76161db641e97668d7fb3593da75b674639b3ecc8213ab17b5"
     },
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-002.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-002.jpg",
       "sha256": "8c823a1f966c947ff0f55e0168e747090c75e008f98b2981f2ae0f25271162f8"
     },
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-003.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-003.jpg",
       "sha256": "61c3b83d5ee6dac6d7080921df4fd41e598607e748a9aa929eb1cf613a3befa2"
     },
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-004.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-004.jpg",
       "sha256": "37e5bf3d041c1abb2fee52751dc4cbf45581f191ee85e527a58e626ca5b3e097"
     },
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-005.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-005.jpg",
       "sha256": "fd248b4be35229249d72c5d460101649fa222c7eb7aa70ebbfd4fcdd7a053f21"
     },
     {
-      "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-006.jpg",
+      "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-006.jpg",
       "sha256": "1c8a009bc81ffaef47458f8432602e36749c33f6cbebd0c68f8fe180419e0096"
     }
   ],
   "unresolved_gaps": [
     "Visual review uses sampled frames and cannot establish complete coverage of continuous actions.",
-    "English local ASR may misrecognize proper names and technical terms."
+    "English local ASR may misrecognize proper names and technical terms.",
+    "Local paths were anonymized for publication; material_revision identifies the original review snapshot."
   ]
 }

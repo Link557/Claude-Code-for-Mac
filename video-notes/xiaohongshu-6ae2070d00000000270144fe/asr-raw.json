@@ -10095,5 +10095,5 @@
     }
   ],
   "language": "en",
-  "model_path": "/Users/jolinkujo/.cache/huggingface/hub/models--mlx-community--whisper-small-mlx/snapshots/45f3915923c7a79a5a5b5a7d909d39aeb0e5630e"
+  "model_path": "/Users/example/.cache/huggingface/hub/models--mlx-community--whisper-small-mlx/snapshots/45f3915923c7a79a5a5b5a7d909d39aeb0e5630e"
 }
