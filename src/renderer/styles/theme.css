@@ -250,6 +250,15 @@ button {
 .crab-sleep .crab-body { animation: crab-snooze 2.8s steps(2, end) infinite; }
 .crab-zzz { animation: crab-zzz 2.2s steps(4, end) infinite; }
 .crab-working .crab-claw-l { animation: crab-claw 0.6s steps(2, end) infinite alternate; }
+.agent-crab { display: inline-block; width: 72px; max-width: 100%; aspect-ratio: 26 / 17; flex-shrink: 0; vertical-align: middle; }
+.agent-crab .crab { display: block; width: 100%; height: auto; }
+.agent-crab-small { width: 34px; }
+.agent-crab[data-working="false"] .crab * { animation: none !important; }
+.agent-crab[data-working="true"] .crab-leg { animation: crab-kick .6s steps(2, end) var(--agent-delay, 0s) infinite alternate; }
+.agent-crab[data-working="true"] .crab-leg:nth-child(2n) { animation-direction: alternate-reverse; }
+.agent-crab[data-working="true"] .crab-body { animation-delay: var(--agent-delay, 0s); }
+.agent-crab[data-working="true"] .crab-eyes { animation-delay: var(--agent-delay, 0s); }
+@media (prefers-reduced-motion: reduce) { .agent-crab .crab * { animation: none !important; } }
 .crab-thinking .crab-claw-r { transform: translate(-2px, -2px); }
 .crab-bulb { animation: crab-glow 2s ease-in-out infinite alternate; }
 .crab-writing .crab-body { animation: none; }

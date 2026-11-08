@@ -244,6 +244,7 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void, fi
     changeRule: (_e, id, path, change) => chats.changeRule(id, path, change),
     applySetting: (_e, id, path, key, value) => chats.applySetting(id, path, key, value),
     reloadConfiguration: (_e, id, path) => chats.reloadConfiguration(id, path),
+    subagentMessages: (_e, id, path, toolUseId) => chats.subagentMessages(id, path, toolUseId),
     taskOutput: (_e, id, path, taskId) => chats.taskOutput(id, path, taskId),
     stopTask: (_e, id, path, taskId) => chats.stopTask(id, path, taskId),
     rewindPreview: (_e, id, path, target) => chats.rewindPreview(id, path, target),

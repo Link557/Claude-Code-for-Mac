@@ -54,7 +54,7 @@ export class TaskTracker {
           continue
         }
         next.set(task.task_id, run)
-        const update = this.update(task.task_id, { ...task, backgrounded: true }, 'level')
+        const update = this.update(task.task_id, { ...task, backgrounded: true, ambient: task.ambient === true, skip_transcript: task.skip_transcript === true }, 'level')
         if (update) changed.push(update)
       }
       // A level says nothing about foreground tasks. Only tasks previously in the background set leave it.

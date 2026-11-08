@@ -80,6 +80,23 @@ export class SessionManager {
     return this.snapshot(sessionId, this.transcripts.get(sessionId) ?? transcript)
   }
 
+  async subagentMessages(sessionId: string, projectPath: string, toolUseId: string) {
+    const parent = await this.transcript(sessionId, projectPath)
+    const agent = parent.activity.snapshot().sections.agents.find(item => item.id === toolUseId)
+    if (!agent) throw new Error('该子 Agent 不属于当前会话')
+    if (!agent.agentId) return []
+    const sdk = await loadSdk()
+    const messages = await sdk.getSubagentMessages(this.historyId(sessionId), agent.agentId, { dir: projectPath })
+    if (messages.some(message => message.session_id !== this.historyId(sessionId) || (message.parent_tool_use_id ? message.parent_tool_use_id !== toolUseId : !agent.agentIdVerified))) {
+      throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+    }
+    const transcript = new Transcript(projectPath)
+    // 文件已由 SDK 按父会话与 Agent ID 定位；其中的主链就是该子 Agent 的会话。
+    for (const message of messages) transcript.apply({ ...message, parent_tool_use_id: null })
+    transcript.finish()
+    return transcript.messages
+  }
+
   private snapshot(sessionId: string, transcript: Transcript): ChatSnapshot {
     const session = this.live.get(sessionId)
     const prefs = this.prefs(sessionId)

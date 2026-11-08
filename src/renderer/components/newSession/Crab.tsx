@@ -1,5 +1,6 @@
 import type { CrabGesture } from './crabGestures'
 import type { CrabPose } from './crabActivity'
+import type { AgentAccessory } from '../summary/agentAppearance'
 
 const BODY = ['...############...', '...##.######.##...', '..##############..', '...############...']
 const COLOR = '#d97757'
@@ -79,10 +80,10 @@ function Face({ face }: { face: CrabFace }) {
 }
 
 /** Fixed pixel mascot; the extended viewBox leaves room for the bulb and stationery. */
-export function Crab({ pose = 'idle', gesture, rainbow, face }: { rainbow?: boolean; pose?: CrabPose; gesture?: CrabGesture; face?: CrabFace }) {
+export function Crab({ pose = 'idle', gesture, rainbow, face, color = COLOR, accessory }: { rainbow?: boolean; pose?: CrabPose; gesture?: CrabGesture; face?: CrabFace; color?: string; accessory?: AgentAccessory }) {
   return <svg viewBox="-2 -7 26 17" width={78} height={51} shapeRendering="crispEdges" aria-hidden="true" className={`crab crab-${pose}${rainbow ? ' crab-violet' : ''}${face ? ' crab-held' : ''}`} data-crab-pose={pose} data-crab-gesture={gesture} data-crab-face={face}>
     <rect x={-2} y={-7} width={26} height={17} fill="transparent" />
-    <g fill={rainbow ? '#8e55ce' : COLOR}>
+    <g fill={rainbow ? '#8e55ce' : color}>
       {[4, 6, 11, 13].map(x => <rect key={x} className="crab-leg" x={x} y={8} width={1} height={2} />)}
       <g className="crab-body">
         {pixels.map(p => <rect key={`${p.x}-${p.y}`} {...p} className={rainbow ? 'violet-pixel' : undefined} style={rainbow ? {animationDelay: ((p.x*.05+p.y*.0275)*4-4)+'s'} : undefined} width={1} height={2} />)}
@@ -90,8 +91,14 @@ export function Crab({ pose = 'idle', gesture, rainbow, face }: { rainbow?: bool
         {!gesture && <rect className="crab-claw-r" x={16} y={4} width={1} height={2} />}
         {gesture === 'thinking' && <g className="crab-cheek"><Grip x={16.4} y={3.1} /></g>}
         {gesture === 'playing' && <g className="crab-flick"><Grip x={18.2} y={3.6} /></g>}
-        {(gesture || face) && <path className="crab-face-skin" fill={rainbow ? '#8e55ce' : COLOR} d="M5 2h1v4H5zM12 2h1v4h-1z" />}
+        {(gesture || face) && <path className="crab-face-skin" fill={rainbow ? '#8e55ce' : color} d="M5 2h1v4H5zM12 2h1v4h-1z" />}
         {face ? <Face face={face} /> : <Eyes gesture={gesture} />}
+        {accessory === 'glasses' && <g fill="none" stroke="#343e43" strokeWidth={0.65}>
+          <rect x={3.5} y={1} width={4} height={3.5} /><rect x={10.5} y={1} width={4} height={3.5} />
+          <path d="M7.5 2h3M2 1.5h1.5M14.5 1.5H16" />
+        </g>}
+        {accessory === 'hat' && <g><path fill="#3d5949" d="M6-4h7v3H6zM4-1h11v1H4z" /><path fill="#d1b04f" d="M6-2h7v1H6z" /></g>}
+        {accessory === 'mohawk' && <path fill="#35464e" d="M9-5h1v1h1v1h1v1h1v2H7v-2h1v-1h1z" />}
         {pose === 'writing' && <g fill="none" stroke="#34302e" strokeWidth={0.65}>
           <rect x={3.5} y={1} width={4} height={3.5} /><rect x={10.5} y={1} width={4} height={3.5} />
           <path d="M7.5 2h3M2 1.5h1.5M14.5 1.5H16" />

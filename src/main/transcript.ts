@@ -274,7 +274,15 @@ export class Transcript {
         } else if (c.type === 'text' && typeof c.text === 'string') texts.push(c.text)
       }
     }
-    if (parent) return
+    if (parent) {
+      if (texts.length) {
+        const msg = this.ensure(String(raw.uuid ?? randomUUID()), 'user', parent)
+        msg.source = 'internal'
+        msg.blocks = [{ kind: 'text', text: texts.join('\n') }]
+        if (typeof raw.uuid === 'string') msg.uuid = raw.uuid
+      }
+      return
+    }
     const uuid = typeof raw.uuid === 'string' ? raw.uuid : randomUUID()
     const submitted = this.submissions.get(uuid)
     if (this.seenUserEvents.has(uuid)) return

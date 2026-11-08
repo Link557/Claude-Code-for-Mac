@@ -23,10 +23,12 @@ interface ToolFact {
   id: string; name: string; parent: string; input: Json; status: ActivityStatus
   source?: SummaryItem; change?: SummaryItem; resultSeen?: boolean
 }
+type AgentFact = SummaryItem & { runId?: string; taskId?: string; hidden?: boolean }
+const internalAgentTask = (task: Record<string, unknown>): boolean => task.subagent_type === 'main-session' || task.ambient === true || task.skip_transcript === true
 export interface ActivityState {
   version: 1; revision: number; historyIncomplete: boolean
   tools: ToolFact[]; references: SummaryItem[]; projects: SummaryItem[]; tasks: SummaryItem[]
-  agents: (SummaryItem & { runId?: string; taskId?: string })[]
+  agents: AgentFact[]
 }
 
 export class SessionActivity {
@@ -35,7 +37,8 @@ export class SessionActivity {
   private references = new Map<string, SummaryItem>()
   private projects = new Map<string, SummaryItem>()
   private tasks = new Map<string, SummaryItem>()
-  private agents = new Map<string, SummaryItem & { runId?: string; taskId?: string }>()
+  private agents = new Map<string, AgentFact>()
+  private nextAgentIndex = 0
   private dirty = true
   private revision = 0
   private historyIncomplete = false
@@ -47,6 +50,12 @@ export class SessionActivity {
         for (const item of saved[key]) (this[key] as Map<string, { id: string }>).set(item.id, item)
       }
       for (const agent of saved.agents) if (agent.taskId) this.taskTracker.remember(agent.taskId, agent.runId, agent.status ?? 'unknown')
+      for (const agent of this.agents.values()) {
+        agent.appearanceIndex ??= this.nextAgentIndex
+        this.nextAgentIndex = Math.max(this.nextAgentIndex, agent.appearanceIndex + 1)
+        // 老版本的无关联占位记录不能证明它是主会话以外的独立子 Agent。
+        if (agent.id.startsWith('task:') && !this.tools.has(agent.id)) { agent.hidden = true; this.historyIncomplete = true }
+      }
     }
     if (cwd) this.addProject(cwd)
   }
@@ -88,16 +97,19 @@ export class SessionActivity {
     }
     if (message.type === 'user') {
       if (!message.parent_tool_use_id) this.reference(text(body.content))
+      const singleResult = list(body.content).filter(part => obj(part).type === 'tool_result').length === 1
       for (const part of list(body.content)) {
         const block = obj(part)
         if (block.type !== 'tool_result') continue
         const tool = this.tools.get(str(block.tool_use_id))
-        if (!tool || tool.resultSeen) continue
+        if (!tool) continue
         let output = obj(message.tool_use_result)
         if (!Object.keys(output).length) {
           try { output = obj(JSON.parse(text(block.content))) } catch { /* 非结构化结果只使用可确认的信息 */ }
         }
-        this.result(tool, output, text(block.content), block.is_error === true)
+        const agentOutput = singleResult ? obj(message.tool_use_result) : {}
+        this.agentIdentity(tool.id, agentOutput, text(block.content))
+        if (!tool.resultSeen) this.result(tool, output, text(block.content), block.is_error === true, agentOutput)
       }
     }
   }
@@ -126,10 +138,21 @@ export class SessionActivity {
       fact.change = { id: path, title: basename(path), path, description: '会话工具修改', ...delta }
     }
     this.tools.set(id, fact)
-    if (name === 'Agent' || name === 'Task') this.agents.set(id, { id, title: short(input.description) || str(input.subagent_type) || '子 Agent', description: str(input.subagent_type) || '类型未知', status: 'running' })
+    if (name === 'Agent' || name === 'Task') this.agents.set(id, { status: 'running', ...this.agents.get(id), appearanceIndex: this.agents.get(id)?.appearanceIndex ?? this.nextAgentIndex++, id, title: short(input.description) || str(input.subagent_type) || '子 Agent', description: str(input.subagent_type) || '类型未知' })
     this.changed()
   }
-  private result(tool: ToolFact, output: Json, resultText: string, failed: boolean): void {
+  private agentIdentity(toolId: string, output: Json, resultText: string): void {
+    const agent = this.agents.get(toolId)
+    if (!agent) return
+    const structured = str(output.agentId)
+    const footer = /(?:^|\n)agentId: ([\w-]+) \(([^()\r\n]+)\)\s*(?:<usage>[\s\S]*?<\/usage>)?\s*$/.exec(resultText)
+    const footerId = footer && (/^for resuming(?: to continue this agent(?: if needed)?)?$/.test(footer[2]) || footer[2] === `use SendMessage with to: '${footer[1]}', summary: '<5-10 word recap>' to continue this agent`) ? footer[1] : ''
+    const agentId = structured || (!agent.agentIdVerified ? footerId : '')
+    if (agentId && (agentId !== agent.agentId || Boolean(structured) !== Boolean(agent.agentIdVerified))) {
+      agent.agentId = agentId; agent.agentIdVerified = Boolean(structured); this.changed()
+    }
+  }
+  private result(tool: ToolFact, output: Json, resultText: string, failed: boolean, agentOutput: Json): void {
     tool.resultSeen = true; tool.status = failed ? 'failed' : 'completed'
     if (tool.change && !failed) {
       if (output.staged === true) tool.change = undefined
@@ -152,9 +175,13 @@ export class SessionActivity {
     if (!failed) this.taskResult(tool, output, resultText)
     const agent = this.agents.get(tool.id)
     if (agent && !terminal(agent.status)) {
-      const background = tool.input.run_in_background === true || output.isAsync === true || Boolean(output.task_id)
-      agent.status = failed ? 'failed' : background ? 'running' : 'completed'
-      if (str(output.agentId) || str(output.task_id)) agent.taskId = str(output.task_id) || str(output.agentId)
+      const background = agentOutput.status === 'async_launched' || tool.input.run_in_background === true || agentOutput.isAsync === true || Boolean(agentOutput.task_id)
+      agent.status = failed || agentOutput.status === 'failed' ? 'failed' : agentOutput.status === 'completed' ? 'completed' : background ? 'running' : 'completed'
+      if (str(agentOutput.task_id)) {
+        agent.taskId = str(agentOutput.task_id)
+        const tracked = this.taskTracker.tasks.get(agent.taskId)
+        if (tracked) this.agentEvent({ ...tracked, tool_use_id: tool.id })
+      }
     }
     this.changed()
   }
@@ -194,12 +221,17 @@ export class SessionActivity {
   }
   private agentEvent(event: TrackedTask): void {
     const taskId = str(event.task_id)
-    const id = str(event.tool_use_id) || [...this.agents.values()].find((a) => a.taskId === taskId)?.id || `task:${taskId}`
+    const id = str(event.tool_use_id) || [...this.agents.values()].find((a) => a.taskId === taskId)?.id
+    // membership 不带工具 ID，先保留在 TaskTracker，避免猜测关联或重复计数。
+    if (!id) { this.changed(); return }
     const existing = this.agents.get(id)
     // Shell、监控、MCP 后台任务不是子代理。
     if (!existing && event.task_type !== 'local_agent' && !event.subagent_type) return
-    const agent = existing ?? { id, title: short(event.description) || '子 Agent', description: str(event.subagent_type) || '类型未知' }
+    if (internalAgentTask(event) && !existing) return
+    const agent: AgentFact = existing ?? { id, appearanceIndex: this.nextAgentIndex++, title: short(event.description) || '子 Agent', description: str(event.subagent_type) || '类型未知' }
+    agent.hidden = internalAgentTask(event)
     agent.taskId = taskId; agent.runId = str(event.run_id) || agent.runId
+    if (str(event.agent_id)) { agent.agentId = str(event.agent_id); agent.agentIdVerified = true }
     if (event.description) agent.title = short(event.description)
     if (event.summary) agent.description = short(event.summary)
     agent.status = status(event.status)
@@ -243,6 +275,7 @@ export class SessionActivity {
       const links = [...new Map(calls.flatMap((t) => [...(t.source?.links ?? []), ...(t.source?.url ? [{ title: t.source.description, url: t.source.url }] : [])]).map((link) => [link.url, link])).values()]
       sources.set(id, { ...calls[0].source!, links, description: `调用 ${calls.length} 次 · 成功 ${succeeded}${failed ? ` · 失败 ${failed}` : ''}`, details })
     }
-    return structuredClone({ revision: this.revision, historyIncomplete: this.historyIncomplete, sections: { changes: [...changes.values()], sources: [...sources.values()], projects: [...this.projects.values()], tasks: [...this.tasks.values()], agents: [...this.agents.values()] } })
+    const unlinkedAgentTaskIds = [...this.taskTracker.tasks.values()].filter(task => task.task_type === 'local_agent' && !internalAgentTask(task) && ![...this.agents.values()].some(agent => agent.taskId === task.task_id && !agent.hidden)).map(task => task.task_id)
+    return structuredClone({ revision: this.revision, historyIncomplete: this.historyIncomplete, agentsIncomplete: unlinkedAgentTaskIds.length > 0, unlinkedAgentTaskIds, sections: { changes: [...changes.values()], sources: [...sources.values()], projects: [...this.projects.values()], tasks: [...this.tasks.values()], agents: [...this.agents.values()].filter(agent => !agent.hidden).map(({ hidden, ...agent }) => agent) } })
   }
 }

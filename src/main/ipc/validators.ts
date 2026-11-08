@@ -179,6 +179,7 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'files:stat': args(arg('paths', z.unknown().transform(value => Array.isArray(value) ? value.filter((path): path is string => typeof path === 'string') : []))),
 
   'chat:open': args(text('id'), text('path')),
+  'chat:subagentMessages': args(text('id'), text('path'), text('toolUseId')),
   'chat:start': args(text('path'), text('text'), sessionOptions()),
   'chat:send': args(text('id'), text('path'), text('text'), sessionOptions(), arg('attachment', z.array(z.string().min(1)).nullish().transform(value => value ?? []))),
   'chat:edit': args(text('id'), text('path'), text('messageId'), text('text')),
