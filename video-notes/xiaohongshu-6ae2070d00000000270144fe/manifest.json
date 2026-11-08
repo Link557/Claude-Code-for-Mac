@@ -29,12 +29,12 @@
       },
       "artifacts": [
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/media/video.mp4",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/media/video.mp4",
           "sha256": "b603465bad60f654748cf87c29406791e2f751d454297f5b02193ec5e04cdcb5",
           "bytes": 65137958
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/description.md",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/description.md",
           "sha256": "0a241827d22e515fa8f14816a87fceae1b228e310334bbbbdc0298745e91c43c",
           "bytes": 1651
         }
@@ -61,368 +61,368 @@
       },
       "artifacts": [
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/index.json",
-          "sha256": "abbd13875be3d133de69c9ddb9aba5def476768d6ed91d28494e3ed50d7b6a2a",
-          "bytes": 18874
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/index.json",
+          "sha256": "0e5a89374ae505aa5cb8fa68ff8b02c3f206845d76d095f7137fc74c4d80bca0",
+          "bytes": 14472
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-001.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-001.jpg",
           "sha256": "2a76dc5cad445b76161db641e97668d7fb3593da75b674639b3ecc8213ab17b5",
           "bytes": 462661
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-002.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-002.jpg",
           "sha256": "8c823a1f966c947ff0f55e0168e747090c75e008f98b2981f2ae0f25271162f8",
           "bytes": 486811
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-003.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-003.jpg",
           "sha256": "61c3b83d5ee6dac6d7080921df4fd41e598607e748a9aa929eb1cf613a3befa2",
           "bytes": 534485
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-004.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-004.jpg",
           "sha256": "37e5bf3d041c1abb2fee52751dc4cbf45581f191ee85e527a58e626ca5b3e097",
           "bytes": 521562
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-005.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-005.jpg",
           "sha256": "fd248b4be35229249d72c5d460101649fa222c7eb7aa70ebbfd4fcdd7a053f21",
           "bytes": 580558
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-006.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/sheet-006.jpg",
           "sha256": "1c8a009bc81ffaef47458f8432602e36749c33f6cbebd0c68f8fe180419e0096",
           "bytes": 255314
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0000_000000.000.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0000_000000.000.jpg",
           "sha256": "7d4da6d04565075cd93ebaf8f8c60e54982036d323e9c4aed36cd601c0e5fd45",
           "bytes": 79011
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0001_000016.973.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0001_000016.973.jpg",
           "sha256": "0c6e6a435cb838c37e4853e3eac90f2fb9dbc2b8f504fc5c3a1844b55c883191",
           "bytes": 134246
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0002_000033.947.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0002_000033.947.jpg",
           "sha256": "936595a0f5179870f43f62dcaeac6d774f9e1aea1c3a4becc850f4ee3ada1568",
           "bytes": 126707
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0003_000042.400.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0003_000042.400.jpg",
           "sha256": "d4aae9ff95e60e2c5773c33409a59cac28188831321031009c38ae6c6cb6867e",
           "bytes": 20911
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0004_000042.433.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0004_000042.433.jpg",
           "sha256": "d4aae9ff95e60e2c5773c33409a59cac28188831321031009c38ae6c6cb6867e",
           "bytes": 20911
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0005_000048.100.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0005_000048.100.jpg",
           "sha256": "a9f02d803e11d965d2bcff4f6c728794c3c4b6fa9484505aaedd7df0c966ef0d",
           "bytes": 134555
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0006_000050.920.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0006_000050.920.jpg",
           "sha256": "39f70bbd2614fabad5623eb7e3a1db8fbd93009e2dec44a7c6d9abf1e9b8b5d6",
           "bytes": 150632
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0007_000052.366.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0007_000052.366.jpg",
           "sha256": "ba9ffc21a23c802e73ff7e9960ebdb74e286d2f7f360d47647f4950380e60a0b",
           "bytes": 75884
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0008_000067.894.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0008_000067.894.jpg",
           "sha256": "a8a73c7c837076f8a9aaec7cdc0e540d439d9986a9c90e6bd5153f9c82753d26",
           "bytes": 113921
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0009_000084.867.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0009_000084.867.jpg",
           "sha256": "3c0da220adf6c553ee367ac0759549bc11a765e745cb7b7d427775cc4025dc84",
           "bytes": 92841
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0010_000101.841.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0010_000101.841.jpg",
           "sha256": "593761439e0cb005c841e26a70082cb4614da2ea1cf5de3866760241cc596018",
           "bytes": 118217
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0011_000118.814.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0011_000118.814.jpg",
           "sha256": "8e2f302caebd6ce705e07848e6874c6e21b5dbe539b8920640450d2e0e153a6f",
           "bytes": 114906
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0012_000135.788.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0012_000135.788.jpg",
           "sha256": "08ea2251ad481eb26915e743f00c3d64be666b48a0c6e59d27b33832e88150cb",
           "bytes": 96322
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0013_000152.761.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0013_000152.761.jpg",
           "sha256": "2d4fc8309df4b2346e2d8f4ed4909b7a2bfcf2a5f3b77775adcb87504ed02fbb",
           "bytes": 109778
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0014_000169.734.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0014_000169.734.jpg",
           "sha256": "6264e2c24533643bccecc4d95c6798c6c607bb9b56baeac6b678ad02f9a36765",
           "bytes": 131846
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0015_000186.708.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0015_000186.708.jpg",
           "sha256": "ab935a44d2c49f997f802410df6212b85cb2353da9676042aefaa2fd25c21ece",
           "bytes": 119939
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0016_000203.681.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0016_000203.681.jpg",
           "sha256": "5afa9b511c2b9767d630ecb04ebe39ad4ae0e7e94cbd0bedbf6f2801da46778c",
           "bytes": 112185
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0017_000220.655.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0017_000220.655.jpg",
           "sha256": "bfcc37847cb0d0188bd2cf68232a9200ee26ca4f84562b9c741587aa0247fa96",
           "bytes": 117566
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0018_000237.628.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0018_000237.628.jpg",
           "sha256": "55120fcc0ead808ae933ad65f2e0796ef147b7ad34212fda0b7df8a61375803b",
           "bytes": 110484
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0019_000254.602.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0019_000254.602.jpg",
           "sha256": "53a80a7f0cad0d42c95db7f5d12a5a162b1bc471a22c3e36ea12c4ca00ea378b",
           "bytes": 89904
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0020_000271.575.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0020_000271.575.jpg",
           "sha256": "a2e33bee10b95b956181b7a40fd3b71b1fd4f27723d0c6e2ebc286927878e3e4",
           "bytes": 92583
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0021_000288.548.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0021_000288.548.jpg",
           "sha256": "ab9487ad0639249bbfb9ba2a149166b85a86adadcf0baed79f57ada4597dad94",
           "bytes": 110502
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0022_000294.266.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0022_000294.266.jpg",
           "sha256": "bd02b3e6214d1277e4e6792ab624feb1822ba3e7f0cfcac42e76faa9d58da888",
           "bytes": 39822
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0023_000305.522.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0023_000305.522.jpg",
           "sha256": "83c8777b103a8ce0c227617e94ac291ad7c4ac2c25ea6addf9ff8d998578535d",
           "bytes": 77292
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0024_000322.495.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0024_000322.495.jpg",
           "sha256": "1312a065d5c1d280ad663c24532fb1b42ff5e3597b1443db6fca3d747643cc80",
           "bytes": 90776
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0025_000339.469.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0025_000339.469.jpg",
           "sha256": "e14eb18aae6f065ccbe2bb0d6f796c7a8e6a2b5b132d57fc82b95e93b4fe32c0",
           "bytes": 142583
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0026_000356.442.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0026_000356.442.jpg",
           "sha256": "18082b41900e69c698ea4bf016326ee82849b64fc56a988c6520f91cc1aaff1c",
           "bytes": 85836
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0027_000373.416.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0027_000373.416.jpg",
           "sha256": "937100a20ad9e331fd9666caa23a6b8d1e40dffe9b02aeef0a611239dbded9a2",
           "bytes": 71484
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0028_000390.389.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0028_000390.389.jpg",
           "sha256": "472492aae11bf6e3b2ccba4ae4459b1d5fc8a6c4d4d5f842326442f4cc76acb3",
           "bytes": 148418
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0029_000407.363.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0029_000407.363.jpg",
           "sha256": "5fc45d5ee7aa6d8a345cd109b2a3c7841347382f9c213f1c2998dee73a3a180a",
           "bytes": 160814
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0030_000424.336.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0030_000424.336.jpg",
           "sha256": "8accb37ba2db88428bb89cd10abba8e3a3dc773db89e5182c6c7410052607eed",
           "bytes": 156259
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0031_000441.309.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0031_000441.309.jpg",
           "sha256": "8f3a3f9e866cd0597213b4cb215f430d949229f662b42e3232be461ea9e7717b",
           "bytes": 107635
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0032_000458.283.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0032_000458.283.jpg",
           "sha256": "676c7d17ab448276c03dfe7446f50f802714bdb6efe6c4cf692a21544440a544",
           "bytes": 67240
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0033_000475.256.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0033_000475.256.jpg",
           "sha256": "7e006a047fb66583bc13a41c46bd472cf192808739a413cf7cb802a17b58c6b1",
           "bytes": 136672
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0034_000492.230.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0034_000492.230.jpg",
           "sha256": "daef049906b65261745f5df3227e9287a90d7af60868524b3f762718fb93b8a4",
           "bytes": 143551
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0035_000509.203.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0035_000509.203.jpg",
           "sha256": "c9548db3953ee9ca9b86762ec32412eb4963174a54814a70c9da0783f33611c0",
           "bytes": 58882
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0036_000526.177.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0036_000526.177.jpg",
           "sha256": "4ce8f74752e2dad9e712c7c82e64277960c551f4344b6a52afd880f029fc7bb8",
           "bytes": 123680
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0037_000543.150.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0037_000543.150.jpg",
           "sha256": "046a0e770d016a6d2f4dc258577dcf783e0812581c350c1d337b205c44697204",
           "bytes": 130861
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0038_000560.124.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0038_000560.124.jpg",
           "sha256": "9f45da571948a550cb19f1708806bf72242f5535f63f4219b72af1abc29841a3",
           "bytes": 43968
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0039_000577.097.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0039_000577.097.jpg",
           "sha256": "0aee2ac269fe4acdbc5b3a4d302c46396431fac78931fa6a4c9dd3b3b4c0af6e",
           "bytes": 122847
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0040_000594.070.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0040_000594.070.jpg",
           "sha256": "a59ea9729667d760330953ff440257ec62d1dbeafe9e70ca5c34c61681bba794",
           "bytes": 83585
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0041_000611.044.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0041_000611.044.jpg",
           "sha256": "c2eb8069f4ea7c9d8af3a5a52a57014433d5b7685f892e38a95cf16a2ced9d0e",
           "bytes": 129242
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0042_000628.017.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0042_000628.017.jpg",
           "sha256": "2bfea5ede32c3615a73bf814ea54b39e4c1448640a9709ed9ad9fb64d048668a",
           "bytes": 114302
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0043_000644.991.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0043_000644.991.jpg",
           "sha256": "873417acb14fe48f6d54d65b6bca89a3ab42c52054269f0bc8da8f089bbecf1a",
           "bytes": 131403
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0044_000661.964.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0044_000661.964.jpg",
           "sha256": "76b3b025432156de139b48130384abf452a4d18ee575e2d8d41d2657a26ad8a7",
           "bytes": 114709
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0045_000678.938.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0045_000678.938.jpg",
           "sha256": "f8fe845a78c91b37e273bfd954af32844e13071519bd9cd7cb20adabd6729935",
           "bytes": 137807
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0046_000695.911.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0046_000695.911.jpg",
           "sha256": "d1e1b344b2da2706e720e6161cd4b916336b67af4afe34203d5f7bfe1b0a4275",
           "bytes": 70315
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0047_000712.885.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0047_000712.885.jpg",
           "sha256": "9b06924c4cb7ca7cf4b06ef113f021d40799043e6b7d3ce32a51b4f0409d8e8b",
           "bytes": 115608
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0048_000729.858.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0048_000729.858.jpg",
           "sha256": "b3d3f6a489590e008bc3ea3b4f3da55a88bd30eedd529604fc710ada1ffd71c2",
           "bytes": 121897
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0049_000746.831.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0049_000746.831.jpg",
           "sha256": "8854e94bd3bb41b530d98c0224c4a68b66e99687818e90cbc7324b4942ef69fa",
           "bytes": 148710
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0050_000763.805.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0050_000763.805.jpg",
           "sha256": "5dd6849417a398020991a6f96613e7b25f0383fa5ef7338e6737f24611263323",
           "bytes": 157851
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0051_000780.778.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0051_000780.778.jpg",
           "sha256": "28f6d535afe43abea9c45cf1e55a2128367246e4895ffe6b9403f637333f0c2d",
           "bytes": 108628
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0052_000797.752.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0052_000797.752.jpg",
           "sha256": "4b15144cd88434b139122e2cffadf68646674a592e6bfb6e04ed65ec2b12c591",
           "bytes": 106973
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0053_000814.725.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0053_000814.725.jpg",
           "sha256": "096915b5756a78b775299714e78e5a99555d6cb8c1805e6518968da403679c01",
           "bytes": 122757
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0054_000831.699.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0054_000831.699.jpg",
           "sha256": "8432632503250f7c98131e5142c6836a5c3d6899a0efbf36f09401ebb2f0603b",
           "bytes": 120229
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0055_000848.672.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0055_000848.672.jpg",
           "sha256": "04da44e7858d194b86467c92434432066e9e198236b6dbf1d27222954d37e485",
           "bytes": 141282
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0056_000865.645.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0056_000865.645.jpg",
           "sha256": "9129d82a7d181666e584db9ce77853457e6e3cfd68828136d890becb51109676",
           "bytes": 96151
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0057_000882.619.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0057_000882.619.jpg",
           "sha256": "b5d362abd37086b71a6c434ca44d4962c651f1ce959fd58bfcc44c2a95b8f9f6",
           "bytes": 122751
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0058_000899.592.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0058_000899.592.jpg",
           "sha256": "de93d0352f67c28e4cffd4e1b6e21701fd2949ac81d15031aab415cdb7091c8f",
           "bytes": 144703
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0059_000916.566.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0059_000916.566.jpg",
           "sha256": "e720ef9da92a15a4a472c6ede0d029249dcd178831356beaa270a771b2406c6f",
           "bytes": 108721
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0060_000933.539.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0060_000933.539.jpg",
           "sha256": "dcdd3bccadc16a6b9cf9b0f361a12ce4e75a827aecb38008cfd6e210f1a40fb1",
           "bytes": 133440
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0061_000950.513.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0061_000950.513.jpg",
           "sha256": "08074018a9f1b27f84320deaee28aa89b572030da9735493a590167745ead1e1",
           "bytes": 94857
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0062_000967.486.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0062_000967.486.jpg",
           "sha256": "e52a3cce4370c01158c696c7828e185d20642d859ad35c97872a560efaf73bdb",
           "bytes": 89788
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0063_000984.460.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0063_000984.460.jpg",
           "sha256": "2279ec735d43853dbc6f5ec84ccc6a715df992f18d5ef5acb4268602d467793e",
           "bytes": 128270
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0064_001001.433.jpg",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/0064_001001.433.jpg",
           "sha256": "26ecb46411bc550487fb7f38144b4da5e10ad5c14d6ad5e37e2912d23974fd57",
           "bytes": 223256
         }
       ],
       "started_at": "2026-10-31T11:09:49.808136+00:00",
-      "index_path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/index.json",
+      "index_path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/frames/initial-4809c92d0fc7/index.json",
       "warnings": [],
       "elapsed_seconds": 11.339
     },
@@ -453,19 +453,19 @@
       },
       "artifacts": [
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.json",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.json",
           "sha256": "52b91e85bd7f873f3b0f089fee5a335fdbb5c5d9b2c69ebffdae6627d35ded4e",
           "bytes": 47622
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.md",
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/transcript.md",
           "sha256": "80afb73c8bad21783ed7d1ea71cf5628fb2e685bc9e337ee4d031bbc2420c0ca",
           "bytes": 28518
         },
         {
-          "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/asr-raw.json",
-          "sha256": "97d7cfed403c9d843f77b70b73b0e0e1ec42bedf61415451225a6b2692699ea5",
-          "bytes": 224778
+          "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/asr-raw.json",
+          "sha256": "5af20456b1a241c69fb767dfeab0c30fa9c3e9528deb1802bd6cde3bcda09fc1",
+          "bytes": 224776
         }
       ],
       "started_at": "2026-10-31T11:10:01.149124+00:00",
@@ -482,26 +482,26 @@
   "status": "ready_for_review",
   "analysis": {
     "status": "sampled_review_done",
-    "summary_path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/summary.md",
-    "review_path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/review.json",
+    "summary_path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/summary.md",
+    "review_path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/review.json",
     "material_revision": "aeccc209e91b8c7a5969bcf21250ec0303d6c7c504d9c77d066541e25cea15ed",
     "artifacts": [
       {
-        "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/summary.md",
+        "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/summary.md",
         "sha256": "a7e8328c88c0989098a78fcc491f6b0ae2e00934f4a4f11dcce4cdb5cbfaf977",
         "bytes": 3500
       },
       {
-        "path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/review.json",
-        "sha256": "b178f9e5cdc46772ce549afe3038ed91a44608105f6cff02c59097e93cc6d443",
-        "bytes": 2167
+        "path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/review.json",
+        "sha256": "d510e4a51820031090662cd90ad651b25521000aee85c7249517d54718adf69f",
+        "bytes": 1844
       }
     ],
     "all_initial_sheets_must_be_read": true
   },
   "followups": [],
-  "manifest_path": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe/manifest.json",
-  "task_dir": "/Users/jolinkujo/Documents/项目/claude-desk-source-20261031/video-notes/xiaohongshu-6ae2070d00000000270144fe",
+  "manifest_path": "video-notes/xiaohongshu-6ae2070d00000000270144fe/manifest.json",
+  "task_dir": "video-notes/xiaohongshu-6ae2070d00000000270144fe",
   "updated_at": "2026-10-31T11:11:05.310156+00:00",
   "writing": {
     "lesson_type": "auto",
