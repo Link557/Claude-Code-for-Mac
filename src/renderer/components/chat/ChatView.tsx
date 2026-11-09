@@ -163,7 +163,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
 
   return (
     <FileContext.Provider value={{ cwd }}>
-      <div className="flex min-h-0 flex-1">
+      <div className="chat-view flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             ref={scroller}
@@ -171,11 +171,11 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
               const el = e.currentTarget
               stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
             }}
-            className="min-h-0 flex-1 overflow-y-auto px-8"
+            className="chat-scroll min-h-0 flex-1 overflow-y-auto px-8"
           >
-            <div className={`mx-auto max-w-[760px] pt-2 ${crabOverlap ? 'pb-[76px]' : 'pb-6'}`}>
+            <div className={`chat-messages mx-auto max-w-[760px] ${crabOverlap ? 'pb-[76px]' : 'pb-6'}`}>
               {external && (
-                <div className="sticky top-0 z-10 mb-2 flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-[13px] shadow-card">
+                <div className="chat-external-update sticky z-10 mb-2 flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-[13px] shadow-card">
                   <span className="min-w-0 flex-1 text-fg2">会话有更新</span>
                   <button
                     type="button"

@@ -105,6 +105,32 @@ button {
   -webkit-app-region: no-drag;
 }
 
+.chat-workspace {
+  --chat-titlebar-height: 52px;
+  --chat-titlebar-clearance: 16px;
+}
+.chat-titlebar { height: var(--chat-titlebar-height); }
+.chat-titlebar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 calc(-1 * var(--chat-titlebar-clearance));
+  z-index: -1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 76%, transparent);
+  backdrop-filter: blur(14px);
+  mask-image: linear-gradient(#000 calc(100% - 20px), transparent);
+}
+.chat-view { --chat-reading-edge: 0px; }
+.chat-titlebar + .chat-view {
+  --chat-reading-edge: calc(var(--chat-titlebar-height) + var(--chat-titlebar-clearance));
+  margin-top: calc(-1 * var(--chat-titlebar-height));
+}
+.chat-titlebar:has(+ .workspace-action-error)::before { bottom: 0; }
+.workspace-action-error + .chat-view { --chat-reading-edge: var(--chat-titlebar-clearance); }
+.chat-scroll { scroll-padding-top: var(--chat-reading-edge); }
+.chat-messages { padding-top: calc(var(--chat-reading-edge) + 0.5rem); }
+.chat-external-update { top: var(--chat-reading-edge); }
+
 /* 回复内容的 Markdown 排版 */
 .md {
   font-family: var(--font-reading);
