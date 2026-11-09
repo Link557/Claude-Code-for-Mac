@@ -55,13 +55,14 @@ it('refreshes the visible model catalog when the current CLI configuration chang
   expect(off).toHaveBeenCalledOnce()
 })
 
-it('removes cached Fable when the CLI no longer lists it and does not invent resolved IDs', async () => {
+it('hides cached Fable while awaiting current models and does not invent resolved IDs', async () => {
   const live = deferred<ReturnType<typeof meta>>()
   vi.mocked(window.desk.meta.cachedModels).mockResolvedValue([{ value: 'fable', label: 'Fable', resolvedModel: 'old-fable-id', efforts: [] }])
   vi.mocked(window.desk.meta.get).mockReturnValue(live.promise)
   render(<Harness />)
   fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
-  await screen.findByRole('button', { name: 'Fable' })
+  await act(async () => {})
+  expect(screen.queryByRole('button', { name: 'Fable' })).toBeNull()
   await act(async () => live.resolve(meta([{ value: 'vendor/custom', label: 'Custom', efforts: [] }])))
   expect(screen.queryByRole('button', { name: 'Fable' })).toBeNull()
   expect(screen.getByRole('button', { name: 'Custom' }).querySelector('small')).toBeNull()
@@ -129,6 +130,29 @@ it('shows a cache that arrives after live failure and retains the retry', async 
   await act(async () => cache.resolve([opus]))
   expect(screen.getByRole('button', { name: '高' })).toBeTruthy()
   expect(screen.queryByText('显示上次结果')).toBeNull()
+})
+it('retains cached capabilities and the error when the model catalog query fails after initialization', async () => {
+  const cache = deferred<ModelOption[] | null>()
+  vi.mocked(window.desk.meta.cachedModels).mockReturnValue(cache.promise)
+  vi.mocked(window.desk.meta.get).mockResolvedValue({ ...meta([]), modelCatalogError: '网关不可用' })
+  render(<Harness />)
+  fireEvent.click(screen.getByRole('button', { name: '选择思考程度' }))
+  await screen.findByText('网关不可用')
+  await act(async () => cache.resolve([opus]))
+  expect(screen.getByRole('button', { name: '高' })).toBeTruthy()
+  expect(screen.getByText('网关不可用')).toBeTruthy()
+})
+
+it('selects the default model for a null model preference', async () => {
+  const defaultModel = { value: 'default', label: '默认模型', efforts: ['high' as const] }
+  vi.mocked(window.desk.meta.get).mockResolvedValue(meta([defaultModel, opus]))
+  const change = vi.fn()
+  render(<ModePicker options={{ model: null, mode: 'default', effort: null }} onChange={change} />)
+  fireEvent.click(screen.getByRole('button', { name: '选择模型' }))
+  const option = await screen.findByRole('button', { name: '默认模型' })
+  expect(option.getAttribute('aria-pressed')).toBe('true')
+  fireEvent.click(option)
+  expect(change).toHaveBeenCalledWith({ model: 'default' })
 })
 it('allows retry after an empty response', async () => {
   vi.mocked(window.desk.meta.cachedModels).mockResolvedValue(null)

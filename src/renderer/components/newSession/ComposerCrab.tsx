@@ -1,5 +1,5 @@
 import { CRAB_GESTURES } from './crabGestures'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { ChatActivity, ChatState } from '@shared/chat'
 import { Crab } from './Crab'
 import { useCrabDrag } from './useCrabDrag'
@@ -14,11 +14,23 @@ export function nextVerb(previous?: string): SpinnerVerb {
 }
 
 /** draggable：新建会话页的小螃蟹可以拖起来，松手后掉回输入框上方 */
-export function ComposerCrab({ state = 'idle', activity, hasDraft, rainbow, fast, queue, draggable = false }: { fast?: boolean; rainbow?: boolean; queue?: ReactNode; state?: ChatState; activity?: ChatActivity; hasDraft: boolean; draggable?: boolean }) {
+export function ComposerCrab({ state = 'idle', activity, hasDraft, rainbow, fast, queue, draggable = false, activityTextRef, suggestionId }: { fast?: boolean; rainbow?: boolean; queue?: ReactNode; state?: ChatState; activity?: ChatActivity; hasDraft: boolean; draggable?: boolean; activityTextRef?: RefObject<string>; suggestionId?: string }) {
   const { face, slotRef, bodyRef, handlers } = useCrabDrag(draggable)
   const language = useDesk((s): 'zh' | 'en' => s.settings?.executionLanguage === 'en' ? 'en' : 'zh')
   const display = crabActivity(state, activity, language)
   const [sleeping, setSleeping] = useState(false)
+  const lastSuggestion = useRef(suggestionId)
+  const [idea, setIdea] = useState(false)
+  useEffect(() => {
+    if (!suggestionId || suggestionId === lastSuggestion.current) {
+      setIdea(false)
+      return
+    }
+    lastSuggestion.current = suggestionId
+    setIdea(true)
+    const timer = setTimeout(() => setIdea(false), 880)
+    return () => clearTimeout(timer)
+  }, [suggestionId])
   const [rotation, setRotation] = useState(() => ({ word: nextVerb(), changes: 0 }))
   const previousFast = useRef(fast)
   const [runningSteps, setRunningSteps] = useState(false)
@@ -48,20 +60,25 @@ export function ComposerCrab({ state = 'idle', activity, hasDraft, rainbow, fast
   }, [display.rotating])
   const pose = state === 'idle' ? hasDraft ? 'look' : sleeping ? 'sleep' : 'idle' : display.pose
   const gesture = display.rotating ? CRAB_GESTURES[rotation.word] : undefined
-  const visualPose = gesture === 'thinking' ? 'thinking' : gesture ? 'working' : pose
+  const showIdea = idea && Boolean(suggestionId) && state === 'idle'
+  const visualPose = showIdea || gesture === 'thinking' ? 'thinking' : gesture ? 'working' : pose
   const shimmer = !rainbow && rotation.changes > 0 && rotation.changes % 4 === 0
+  const activityText = display.rotating ? `${language === 'zh' ? SPINNER_VERBS_ZH[rotation.word] : rotation.word}…` : display.label
+  useLayoutEffect(() => {
+    if (activityTextRef) activityTextRef.current = activityText
+  }, [activityText, activityTextRef])
   return <div className="composer-crab" data-composer-crab>
     <div className="crab-track">
       {fast && (runningSteps || display.rotating) && <span key={runningSteps ? 'start' : 'task'} aria-hidden="true" className={runningSteps ? 'crab-speed' : 'crab-speed crab-speed-task'}><i/><i/><i/></span>}
       <div ref={slotRef} className="crab-slot">
         <div ref={bodyRef} className={draggable ? 'crab-draggable' : undefined} {...handlers}>
-          <div className={runningSteps ? 'crab-run' : undefined}><Crab rainbow={rainbow} pose={face ? 'idle' : visualPose} gesture={face ? undefined : gesture} face={face} /></div>
+          <div className={showIdea ? 'crab-suggestion-idea' : runningSteps ? 'crab-run' : undefined}><Crab rainbow={rainbow} pose={face ? 'idle' : visualPose} gesture={face ? undefined : gesture} face={face} /></div>
         </div>
       </div>
     </div>
     <div className="composer-crab-label" aria-hidden="true" lang={language === 'zh' ? 'zh-CN' : 'en'}>
-      {display.rotating && <span className="composer-crab-decoration"><span key={rotation.changes} className={`composer-crab-verb${shimmer ? ' composer-crab-shimmer' : ''}`}>{language === 'zh' ? SPINNER_VERBS_ZH[rotation.word] : rotation.word}…</span></span>}
-      {!display.rotating && <span className="composer-crab-state">{display.label}</span>}
+      {display.rotating && <span className="composer-crab-decoration"><span key={rotation.changes} className={`composer-crab-verb${shimmer ? ' composer-crab-shimmer' : ''}`}>{activityText}</span></span>}
+      {!display.rotating && <span className="composer-crab-state">{activityText}</span>}
     </div>
     {queue && <div className="composer-queue-bubble">{queue}</div>}
     <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{display.label}</span>

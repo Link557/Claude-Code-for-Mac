@@ -215,17 +215,6 @@ it.each(['commands', 'mcp'] as const)('protects an in-flight %s read using the s
   expect(output.close).toHaveBeenCalledOnce()
 })
 
-it('refuses CLI handoff while a non-serial session operation is pending', async () => {
-  const output = await idleSession()
-  const result = deferred<[]>()
-  output.mcpServerStatus.mockReturnValueOnce(result.promise)
-  const pending = manager.mcp('side', '/tmp')
-  await vi.waitFor(() => expect(output.mcpServerStatus).toHaveBeenCalled())
-  await expect(manager.handoffToCli('side', '/tmp')).rejects.toThrow('会话操作')
-  expect(output.close).not.toHaveBeenCalled()
-  result.resolve([]); await pending
-})
-
 it('protects an idle session while a configuration command awaits SDK confirmation', async () => {
   const output = await idleSession()
   const confirmation = deferred<void>()

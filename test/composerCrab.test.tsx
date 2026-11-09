@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ComposerCrab, nextVerb } from '../src/renderer/components/newSession/ComposerCrab'
+import { JumpToLatest } from '../src/renderer/components/chat/ChatNavigation'
 import { crabActivity } from '../src/renderer/components/newSession/crabActivity'
 import { useDesk } from '../src/renderer/store'
 import { SPINNER_VERBS_ZH } from '../src/renderer/components/newSession/spinnerVerbsZh'
@@ -69,6 +70,26 @@ describe('composer crab', () => {
     expect(screen.getByRole('status').textContent).toBe('Working')
     tick(8000); expect(document.querySelector('.composer-crab-shimmer')).toBeNull()
     view.unmount(); expect(vi.getTimerCount()).toBe(0)
+  })
+  it('shows the crab’s current execution phrase and holds it while the jump button is hovered', () => {
+    const activityTextRef = { current: '' }
+    const jump = vi.fn()
+    render(<>
+      <JumpToLatest working activityTextRef={activityTextRef} onJump={jump} />
+      <ComposerCrab hasDraft={false} state="running" activityTextRef={activityTextRef} />
+    </>)
+    const button = screen.getByRole('button', { name: '回到最新消息' })
+    const first = word()!
+    fireEvent.mouseEnter(button)
+    expect(screen.getByRole('tooltip').textContent).toBe(`${first}回到最新消息`)
+    tick(8000)
+    expect(word()).not.toBe(first)
+    expect(screen.getByRole('tooltip').textContent).toBe(`${first}回到最新消息`)
+    fireEvent.mouseLeave(button)
+    fireEvent.mouseEnter(button)
+    expect(screen.getByRole('tooltip').textContent).toBe(`${word()}回到最新消息`)
+    fireEvent.click(button)
+    expect(jump).toHaveBeenCalledOnce()
   })
   it('resets on session replacement and never sleeps during errors or stopping', () => {
     const view = render(<ComposerCrab key="a" hasDraft={false} />)

@@ -6,17 +6,32 @@ import { QuotaCrab } from '../src/renderer/components/usage/QuotaCrab'
 import { UsageNav } from '../src/renderer/components/usage/UsageNav'
 import { UsageCharts } from '../src/renderer/components/usage/UsageCharts'
 import { useUsage } from '../src/renderer/usageStore'
+import { startUsagePolling } from '../src/renderer/usagePolling'
 import { useDesk } from '../src/renderer/store'
 import type { UsageOverview } from '../src/shared/usageAnalytics'
 const overview: UsageOverview = { account: { key: 'a', email: 'a@test.com', organization: null, subscriptionType: 'pro' }, profile: { name: 'A', avatar: null }, usage: { available: true, subscriptionType: 'pro', windows: [{ kind: 'five_hour', label: '5小时', percent: 20, resetsAt: null }, { kind: 'seven_day', label: '周', percent: 40, resetsAt: null }] }, updatedAt: 100 }
-beforeEach(() => { useUsage.setState({ overview: structuredClone(overview), error: null, loading: false, failures: 0, lastAttempt: 0 }); window.desk = { usage: { overview: vi.fn().mockResolvedValue(overview), saveProfile: vi.fn() } } as unknown as Window['desk'] })
+beforeEach(() => { useUsage.setState({ scope: '', overview: structuredClone(overview), error: null, loading: false, failures: 0, lastAttempt: 0 }); window.desk = { usage: { overview: vi.fn().mockResolvedValue(overview), saveProfile: vi.fn() } } as unknown as Window['desk'] })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 describe('usage navigation and shared requests', () => {
+  it('sets the project scope immediately and waits five seconds before the first poll', async () => {
+    vi.useFakeTimers()
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    useDesk.setState({ projects: [{ id: 'a', name: 'a', path: '/a', addedAt: 0, collapsed: false }], selectedProjectId: 'a', view: { kind: 'new' } })
+    const stop = startUsagePolling()
+    expect(useUsage.getState().scope).toBe('/a')
+    expect(window.desk.usage.overview).not.toHaveBeenCalled()
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(window.desk.usage.overview).toHaveBeenCalledWith('/a')
+    stop()
+    hidden.mockRestore()
+    useDesk.setState({ projects: [], selectedProjectId: null })
+  })
   it('isolates in-flight quota responses across projects', async () => {
     let finish!: (value: UsageOverview) => void
     window.desk.usage.overview = vi.fn().mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finish = resolve }))
       .mockResolvedValueOnce({ ...overview, usage: { available: false, subscriptionType: null, windows: [] } })
     useDesk.setState({ projects: [{ id: 'a', name: 'a', path: '/a', addedAt: 0, collapsed: false }, { id: 'b', name: 'b', path: '/b', addedAt: 0, collapsed: false }], selectedProjectId: 'a', view: { kind: 'new' } })
+    const stop = startUsagePolling()
     const old = useUsage.getState().refresh()
     useDesk.setState({ selectedProjectId: 'b' })
     await useUsage.getState().refresh()
@@ -24,8 +39,32 @@ describe('usage navigation and shared requests', () => {
     expect(useUsage.getState().overview?.usage?.available).toBe(false)
     expect(window.desk.usage.overview).toHaveBeenNthCalledWith(1, '/a')
     expect(window.desk.usage.overview).toHaveBeenNthCalledWith(2, '/b')
+    stop()
     useDesk.setState({ projects: [], selectedProjectId: null })
     useUsage.setState({ scope: '' })
+  })
+  it('ignores an old response after switching A to B and back to A', async () => {
+    let finishOld!: (value: UsageOverview) => void
+    let finishNew!: (value: UsageOverview) => void
+    window.desk.usage.overview = vi.fn()
+      .mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finishOld = resolve }))
+      .mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finishNew = resolve }))
+    useDesk.setState({ projects: [{ id: 'a', name: 'a', path: '/a', addedAt: 0, collapsed: false }, { id: 'b', name: 'b', path: '/b', addedAt: 0, collapsed: false }], selectedProjectId: 'a', view: { kind: 'new' } })
+    const stop = startUsagePolling()
+    expect(useUsage.getState().scope).toBe('/a')
+    const old = useUsage.getState().refresh()
+    useDesk.setState({ selectedProjectId: 'b' })
+    useDesk.setState({ selectedProjectId: 'a' })
+    const current = useUsage.getState().refresh()
+    finishOld({ ...overview, profile: { name: '旧结果', avatar: null } })
+    await old
+    expect(useUsage.getState().overview).toBeNull()
+    expect(useUsage.getState().loading).toBe(true)
+    finishNew(overview)
+    await current
+    expect(useUsage.getState().overview?.profile.name).toBe('A')
+    stop()
+    useDesk.setState({ projects: [], selectedProjectId: null })
   })
   it('shows remaining windows on one entry and routes without changing session state', () => {
     render(<UsageNav />)

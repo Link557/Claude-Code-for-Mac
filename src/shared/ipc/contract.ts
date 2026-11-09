@@ -169,7 +169,6 @@ export const contract = {
     respond: invoke<[sessionId: string, requestId: string, decision: Decision]>(),
     /** 会话是否在别处（终端、VS Code）有了新消息 */
     checkExternal: invoke<[sessionId: string, projectPath: string], boolean>(),
-    handoffToCli: invoke<[sessionId: string, projectPath: string], string>(),
     /** 丢掉缓存，从会话文件重新读取 */
     reload: invoke<[sessionId: string, projectPath: string], ChatSnapshot>(),
     /** 当前上下文窗口占用；会话不存在或读取失败时为 null */

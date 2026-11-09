@@ -1,7 +1,7 @@
 {
   "name": "claude-desk",
   "productName": "Claude Code",
-  "version": "0.3.53",
+  "version": "0.3.58",
   "private": true,
   "description": "Codex 风格的中文 Claude Code 桌面应用",
   "main": "out/main/index.js",

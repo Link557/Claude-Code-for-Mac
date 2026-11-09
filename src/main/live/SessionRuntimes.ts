@@ -11,7 +11,6 @@ export class SessionRuntimes {
   get size(): number { return this.sessions.size }
   get(id: string): LiveSession | undefined { return this.sessions.get(id) }
   has(id: string): boolean { return this.sessions.has(id) }
-  usageCount(id: string): number { return this.uses.get(id)?.count ?? 0 }
   values(): MapIterator<LiveSession> { return this.sessions.values() }
   [Symbol.iterator](): MapIterator<[string, LiveSession]> { return this.sessions.entries() }
 

@@ -60,7 +60,6 @@ export async function pickClaudeExecutable(): Promise<string | null> {
 const quote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`
 const invocation = (executable: string, configDirectory?: string): string => `${configDirectory ? `env CLAUDE_CONFIG_DIR=${quote(configDirectory)} ` : ''}${quote(executable)}`
 export const posixLoginCommand = (executable: string, configDirectory?: string): string => `${invocation(executable, configDirectory)} auth login`
-export const posixResumeCommand = (executable: string, cwd: string, sessionId: string, configDirectory?: string): string => `cd -- ${quote(cwd)} && ${invocation(executable, configDirectory)} --resume ${quote(sessionId)}`
 export async function openOfficialLogin(): Promise<void> {
   await adoptLoginShellEnv()
   clipboard.writeText(posixLoginCommand(claudeRuntime().path, process.env.CLAUDE_CONFIG_DIR))

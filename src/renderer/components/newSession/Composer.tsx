@@ -1,5 +1,5 @@
 import { parseDesktopCommand } from '@shared/sessionCommand'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import {
   ArrowUp,
   Box,
@@ -37,6 +37,7 @@ interface ComposerProps {
   rainbow?: boolean
   sessionState?: ChatState
   activity?: ChatActivity
+  activityTextRef?: RefObject<string>
   sessionId?: string
   promptSuggestion?: import('@shared/chat').PromptSuggestion | null
   queuePanel?: ReactNode
@@ -77,6 +78,7 @@ export function Composer({
   fast, rainbow,
   sessionState,
   activity,
+  activityTextRef,
   sessionId,
   promptSuggestion,
   header,
@@ -324,7 +326,7 @@ export function Composer({
 
   return (
     <div className="relative pt-[52px] composer-with-crab [&>*]:pointer-events-auto">
-      <ComposerCrab fast={fast} rainbow={rainbow} key={sessionId ?? 'new'} draggable={!sessionId} state={sessionState ?? (running || submitting ? 'running' : 'idle')} activity={activity} hasDraft={Boolean(value.trim() || attachments.length)} queue={queuePanel} />
+      <ComposerCrab fast={fast} rainbow={rainbow} key={sessionId ?? 'new'} draggable={!sessionId} state={sessionState ?? (running || submitting ? 'running' : 'idle')} activity={activity} activityTextRef={activityTextRef} suggestionId={ghost?.id} hasDraft={Boolean(value.trim() || attachments.length)} queue={queuePanel} />
       {panel}
       {suggest.open && !panel && <SuggestionList status={suggest.status} error={suggest.error} onRetry={suggest.retry} items={suggest.items} active={suggest.active} onPick={pick} onHover={suggest.setActive} />}
       <div data-composer-surface data-ultracode={rainbow || undefined} data-cache={cacheMinutes === null ? undefined : cacheWarm ? 'warm' : 'cold'} style={cacheMinutes === null ? undefined : { '--cache-gap': `${cacheGap}px` } as React.CSSProperties} className={`relative rounded-[20px] border bg-card shadow-card transition-colors ${cacheMinutes === null ? 'border-line-strong focus-within:border-accent/45' : cacheWarm ? 'border-accent/35 focus-within:border-accent/60' : 'border-line-strong focus-within:border-fg3/45'}`}>

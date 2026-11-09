@@ -13,7 +13,7 @@ import { NewSessionPage } from './components/newSession/NewSessionPage'
 import { UsagePage } from './components/usage/UsagePage'
 import { SchedulesPage } from './components/schedules/SchedulesPage'
 import { SkillsPage } from './components/skills/SkillsPage'
-import { startUsagePolling } from './usageStore'
+import { startUsagePolling } from './usagePolling'
 import { SettingsPage } from './components/settings/SettingsPage'
 import { ChatView } from './components/chat/ChatView'
 import { RightPanel, RightPanelToggle } from './components/right/RightPanel'
@@ -22,7 +22,6 @@ import { AddProjectDialog } from './components/dialogs/AddProjectDialog'
 import { ImportHistoryDialog } from './components/dialogs/ImportHistoryDialog'
 import { SearchDialog } from './components/dialogs/SearchDialog'
 import { SessionSummary } from './components/summary/SessionSummary'
-import { CliHandoff } from './components/chat/CliHandoff'
 
 export function App() {
   const { actionError, clearActionError, ready, view, sessions, sidebarCollapsed, pendingProjectPath, importCandidates, searchOpen, init, toggleSidebar, newChat, setSearchOpen } =
@@ -135,10 +134,9 @@ export function App() {
               <span className={`min-w-0 flex-1 truncate pr-6 font-serif text-[16px] font-normal tracking-[0.02em] text-fg ${sidebarCollapsed ? '' : 'pl-1'}`}>{title}</span>
             </>
           )}
-          {view.kind !== 'settings' && (
-            <div className={`ml-auto flex items-center gap-3 ${rightOpen ? 'pr-3' : 'pr-16'}`}>
-              {view.kind === 'session' && <SessionSummary sessionId={view.sessionId} projectId={view.projectId} />}
-              {view.kind === 'session' && <CliHandoff key={view.sessionId} sessionId={view.sessionId} projectId={view.projectId} />}
+          {view.kind === 'session' && (
+            <div className={`ml-auto flex items-center ${rightOpen ? 'pr-3' : 'pr-16'}`}>
+              <SessionSummary sessionId={view.sessionId} projectId={view.projectId} />
             </div>
           )}
         </div>

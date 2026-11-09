@@ -31,8 +31,16 @@ export function useModelCatalog(cwd?: string) {
       }))
     }, () => { /* The live query can still succeed. */ })
     void window.desk.meta.get(cwd).then(result => {
+      if (!active) return
+      if (result.modelCatalogError) {
+        setCatalog(previous => ({
+          scope, models: previous?.scope === scope ? previous.models : null, loading: false,
+          error: result.modelCatalogError ?? null, cached: previous?.scope === scope && previous.cached
+        }))
+        return
+      }
       freshSucceeded = true
-      if (active) setCatalog({ scope, models: result.models, loading: false, error: null, cached: false })
+      setCatalog({ scope, models: result.models, loading: false, error: null, cached: false })
     }, error => {
       if (active) setCatalog(previous => ({
         scope, models: previous?.scope === scope ? previous.models : null, loading: false,

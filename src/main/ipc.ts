@@ -28,8 +28,7 @@ import { createHumanSubmissionRepository } from './humanSubmissionRepository'
 import { appNotificationHandlers } from './appNotifications'
 import { Scheduler } from './schedules'
 import { readSkillBody, readSkillCatalog, setPluginEnabled } from './skills'
-import { claudeRuntime } from './sdk'
-import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable, posixResumeCommand } from './connection'
+import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable } from './connection'
 
 export function applyTheme(theme: Settings['theme']): void {
   nativeTheme.themeSource = theme
@@ -253,13 +252,6 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void): v
     setEffort: (_e, id, effort) => chats.setEffort(id, effort),
     respond: (_e, id, requestId, decision) => chats.respond(id, requestId, decision),
     checkExternal: (_e, id, path) => chats.checkExternal(id, path),
-    handoffToCli: async (_e, id, path) => {
-      const executable = claudeRuntime().path
-      const historyId = await chats.handoffToCli(id, path)
-      const command = posixResumeCommand(executable, path, historyId, process.env.CLAUDE_CONFIG_DIR)
-      clipboard.writeText(command)
-      return command
-    },
     reload: (_e, id, path) => chats.reload(id, path),
     btw: (_e, id, path, question, history, options) => chats.sideQuestion(id, path, question, history, options),
     mcp: (_e, id, path) => chats.mcp(id, path),

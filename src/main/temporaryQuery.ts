@@ -9,7 +9,7 @@ export function closeTemporaryQueries(): void {
 /** 临时 SDK 查询的唯一生命周期所有者，不等待输出流自然结束。 */
 export async function temporaryQuery<T>(
   create: (controller: AbortController, input: PushQueue<SDKUserMessage>) => Promise<Query>,
-  read: (query: Query) => Promise<T>,
+  read: (query: Query, signal: AbortSignal) => Promise<T>,
   signal?: AbortSignal
 ): Promise<T> {
   const controller = new AbortController()
@@ -36,7 +36,7 @@ export async function temporaryQuery<T>(
       return created
     })()
     query = await Promise.race([creating, cancelled])
-    return await Promise.race([read(query), cancelled])
+    return await Promise.race([read(query, controller.signal), cancelled])
   } finally {
     active.delete(controller)
     clearTimeout(timer)

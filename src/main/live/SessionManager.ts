@@ -488,27 +488,6 @@ export class SessionManager {
     return before !== undefined && count > before
   }
 
-  handoffToCli(sessionId: string, projectPath: string): Promise<string> {
-    return this.lock(sessionId, async () => {
-      this.assertInactive(sessionId, '切换到 CLI')
-      if (this.live.usageCount(sessionId) > 1) throw new Error('请等待当前会话操作结束后切换到 CLI')
-      if (this.prefs(sessionId).queue.items.some(item => item.editing || ['queued', 'failed', 'submitting', 'submitted', 'received', 'unknown'].includes(item.status))) {
-        throw new Error('请先处理待发消息及未确认的交付记录，再切换到 CLI')
-      }
-      await this.transcript(sessionId, projectPath)
-      const id = this.historyId(sessionId)
-      const sdk = await loadSdk()
-      if (!(await sdk.getSessionMessages(id, { dir: projectPath })).length) throw new Error('会话尚未保存，请稍后重试')
-      this.assertInactive(sessionId, '切换到 CLI')
-      if (this.live.usageCount(sessionId) > 1) throw new Error('请等待当前会话操作结束后切换到 CLI')
-      this.closeSession(sessionId)
-      this.transcripts.delete(sessionId)
-      this.transcriptLoads.delete(sessionId)
-      this.publish(sessionId, { kind: 'replaceHistory', snapshot: await this.open(sessionId, projectPath) })
-      return id
-    })
-  }
-
   async context(sessionId: string, projectPath: string, model: string | null): Promise<ContextUsage | null> {
     const live = this.live.get(sessionId)
     // 新会话还没写出会话文件时读不到，返回 null 即可

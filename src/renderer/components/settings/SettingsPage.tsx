@@ -58,27 +58,21 @@ export function SettingsPage() {
     <nav className="mt-5 flex flex-wrap gap-1 border-b border-line pb-3" aria-label="设置分类">
       {([['general', '外观与交互'], ['connection', '账号与接入'], ['models', '模型与权限'], ['context', '上下文'], ['notifications', '通知'], ['advanced', '高级设置']] as const).map(([value, label]) => <button key={value} type="button" aria-current={tab === value ? 'page' : undefined} onClick={() => setView({ ...route, tab: value })} className={`rounded-lg px-3 py-1.5 text-[13px] ${tab === value ? 'bg-active' : 'text-fg2 hover:bg-hover'}`}>{label}</button>)}
     </nav>
-    <p className="mt-3 text-[12px] leading-5 text-fg3">{tab === 'general' || tab === 'notifications'
-      ? '桌面端本机设置，适用于官方和第三方模型接入。'
-      : tab === 'models' ? '新对话默认值保存在桌面端；模型与能力以当前接入返回的结果为准。'
-      : tab === 'connection' ? '沿用 Claude Code 的认证和供应商配置；官方账号套餐与第三方服务权限分别由各自服务管理。'
-      : 'Claude Code 引擎设置与终端共享，按用户、项目和组织策略决定生效值；部分能力还取决于模型或供应商。'}</p>
     {settingsError && <p role="alert" className="mt-3 text-danger">设置保存失败：{settingsError}</p>}
     {projectSettings && <Section title="项目上下文">
       <Row label={<label htmlFor="settings-project">项目</label>}><select id="settings-project" value={project?.id ?? ''} onChange={e => setView({ ...route, projectId: e.target.value || null, sessionId: null })} className={settingsInputClass}><option value="">用户目录</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Row>
     </Section>}
-    {tab === 'general' && <Section title="会话与内存" description="仅管理桌面端驻留的 CLI 进程，不限制历史会话数量，也不取决于账号套餐。">
-      <Row label="驻留会话保留数量" hint="超出这个数量时，才检查并回收长时间闲置的会话。">
+    {tab === 'general' && <Section title="会话与内存">
+      <Row label="驻留会话保留数量">
         <select aria-label="驻留会话保留数量" className={settingsInputClass} value={settings.retainedSessions ?? 4} onChange={e => saveSettings({ retainedSessions: Number(e.target.value) })}>
           {Array.from({ length: 16 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} 个{n === 4 ? '（默认）' : ''}</option>)}
         </select>
       </Row>
-      <Row label="超额会话闲置回收时间" hint="从最近一次活动计算，优先回收最久未使用的会话。">
+      <Row label="超额会话闲置回收时间">
         <select aria-label="超额会话闲置回收时间" className={settingsInputClass} value={settings.sessionIdleMinutes ?? 15} onChange={e => saveSettings({ sessionIdleMinutes: Number(e.target.value) })}>
           {[...new Set([1, 5, 10, 15, 30, 60, 120, settings.sessionIdleMinutes ?? 15])].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n} 分钟{n === 15 ? '（默认）' : ''}</option>)}
         </select>
       </Row>
-      <p className="px-4 py-3 text-[12px] leading-5 text-fg3">每分钟检查一次，保存后从下次检查起生效。执行中、等待授权、有后台任务或正在进行会话操作时不会自动回收，因此可能暂时超过保留数量。回收后历史仍保留，点击可查看，再次发送消息或使用会话控制时自动恢复进程。</p>
     </Section>}
     {(tab === 'general' || tab === 'connection') && <Section title="个人展示"><Row label="显示名称"><DisplayNameEditor compact /></Row></Section>}
     {tab === 'connection' && <ConnectionSettings cwd={cwd} />}
@@ -98,7 +92,7 @@ export function SettingsPage() {
       {languageError && <p role="alert" className="px-4 py-2 text-danger">{languageError}</p>}
     </Section>}
     {tab === 'models' && <Section title="新对话默认值">
-        <Row label="模型"><ModePicker inline="defaultModel" options={{ model: settings.defaultModel, effort: settings.defaultEffort, mode: settings.defaultPermissionMode }} onChange={patch => { if (patch.model) saveSettings({ defaultModel: patch.model }) }} /></Row>
+        <Row label="模型"><ModePicker inline="defaultModel" options={{ model: settings.defaultModel === 'default' ? null : settings.defaultModel, effort: settings.defaultEffort, mode: settings.defaultPermissionMode }} onChange={patch => { if (patch.model !== undefined) saveSettings({ defaultModel: patch.model ?? 'default' }) }} /></Row>
         <Row label="思考程度"><ModePicker inline="defaults" options={{ model: settings.defaultModel, effort: settings.defaultEffort, mode: settings.defaultPermissionMode }}
           onChange={patch => { if (patch.effort !== undefined) saveSettings({defaultEffort:patch.effort}) }} /></Row>
         <Row label="权限模式"><Select value={settings.defaultPermissionMode} options={PERMISSION_MODES.filter(m => m.value !== 'bypassPermissions' || settings.allowBypass)} onChange={v => saveSettings({ defaultPermissionMode: v as typeof settings.defaultPermissionMode })} /></Row>
@@ -108,11 +102,10 @@ export function SettingsPage() {
       <SessionControlsPane sessionId={route.sessionId} cwd={cwd} active initialTab="rules" />
     </Section>}
     {tab === 'context' && <>
-      <Section title="下一条输入建议" description="请求建议会产生额外模型用量，不保证每轮返回。">
-        <Row label="请求输入建议" hint="桌面端开关，新会话或重载后生效。CLI 配置关闭时仍不生成建议。">
+      <Section title="下一条输入建议" description="会增加模型用量。新会话或重载后生效，受 CLI 设置限制。">
+        <Row label="请求输入建议">
           <Toggle label="请求输入建议" value={settings.promptSuggestions ?? true} onChange={promptSuggestions => saveSettings({ promptSuggestions })} />
         </Row>
-        <p className="px-4 py-3 text-[12px] text-fg3">空输入框中显示灰字，Tab 填入草稿，Enter 才发送；不会覆盖已有内容。</p>
       </Section>
       <ClaudeConfigSettings key={cwd} cwd={cwd} groups={[{ title: '对话与回复', keys: CONFIG_GROUPS.context }]} searchable={false} />
     </>}
@@ -125,7 +118,7 @@ export function SettingsPage() {
           setNotificationError(null); setNotificationResult(null); setNotificationSending(true)
           try {
             await window.desk.app.notify('Claude Code', '通知测试', settings.notificationSound === false)
-            setNotificationResult('已发送。没看到弹窗请检查系统通知、专注模式，或是否在共享屏幕。')
+            setNotificationResult('已发送测试通知。')
           } catch (e) { setNotificationError(e instanceof Error ? e.message : String(e)) }
           finally { setNotificationSending(false) }
         }}>{notificationSending ? '正在发送…' : '发送测试通知'}</button></Row>

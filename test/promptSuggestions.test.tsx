@@ -8,9 +8,9 @@ import { applyChatEvent, mergeChatSnapshot, type ChatProjection } from '../src/r
 import { useModal } from '../src/renderer/modalStore'
 afterEach(cleanup)
 const suggestion = { id: 's', text: '运行测试并检查结果' }
-function Harness({ submit = vi.fn(), running = false, initial = '' }: { submit?: ReturnType<typeof vi.fn>; running?: boolean; initial?: string }) {
+function Harness({ submit = vi.fn(), running = false, initial = '', prediction = suggestion }: { submit?: ReturnType<typeof vi.fn>; running?: boolean; initial?: string; prediction?: typeof suggestion | null }) {
  const [text, setText] = useState(initial)
- return <Composer promptSuggestion={suggestion} value={text} onChange={setText} attachments={[]} onAttachmentsChange={() => {}} onSubmit={submit} canSubmit submitHint="发送" chips={null} running={running} />
+ return <Composer promptSuggestion={prediction} value={text} onChange={setText} attachments={[]} onAttachmentsChange={() => {}} onSubmit={submit} canSubmit submitHint="发送" chips={null} running={running} />
 }
 async function type(box: HTMLElement, text: string) {
  const editor = (box as unknown as { __lexicalEditor: LexicalEditor }).__lexicalEditor
@@ -54,6 +54,27 @@ it('does not show or accept a suggestion behind a modal', () => {
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Tab' })
     expect(screen.getByRole('textbox').textContent).toBe('')
   } finally { act(off) }
+})
+it('plays the crab idea once when a new suggestion becomes visible', () => {
+ vi.useFakeTimers()
+ try {
+  const view = render(<Harness running prediction={null} />)
+  const idea = () => view.container.querySelector('.crab-suggestion-idea .crab-bulb')
+  view.rerender(<Harness running />)
+  expect(idea()).toBeNull()
+  view.rerender(<Harness />)
+  expect(idea()).toBeTruthy()
+  expect(screen.getByText(suggestion.text)).toBeTruthy()
+  act(() => vi.advanceTimersByTime(880))
+  expect(idea()).toBeNull()
+  view.rerender(<Harness running />)
+  view.rerender(<Harness />)
+  expect(idea()).toBeNull()
+  view.rerender(<Harness prediction={{ id: 'next', text: '查看下一步' }} />)
+  expect(idea()).toBeTruthy()
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
+  expect(idea()).toBeNull()
+ } finally { vi.useRealTimers() }
 })
 it('preserves a newer prediction over a delayed snapshot and honors a newer clear event', () => {
  const base:ChatProjection={messages:[],state:'idle',approvals:[],options:{model:null,mode:'default',effort:null},error:null}

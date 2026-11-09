@@ -124,6 +124,14 @@ it('clears stale disk data on empty authoritative response and retries immediate
   expect(await meta.cachedModels('/one')).toBeNull()
   expect((await meta.get('/one')).models[0].label).toBe('Recovered')
 })
+it('retains the last cached catalog and retries after a model catalog error', async () => {
+  mocks.load.mockResolvedValueOnce(init()).mockResolvedValueOnce({ ...init(), models: [], modelCatalogError: 'offline' }).mockResolvedValueOnce(init('Recovered'))
+  const initial = await meta.get('/one')
+  meta.invalidate()
+  expect(await meta.get('/one')).toMatchObject({ models: [], modelCatalogError: 'offline' })
+  expect(await meta.cachedModels('/one')).toEqual(initial.models)
+  expect((await meta.get('/one')).models[0].label).toBe('Recovered')
+})
 it('does not fail a model load when command publication throws', async () => {
   mocks.load.mockResolvedValue(init())
   await expect(meta.get('/one', () => { throw new Error('publication') })).resolves.toMatchObject({ models: [{ value: 'opus' }] })
