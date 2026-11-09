@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Activity, Compass, FileText, FolderOpen, Globe, ListTree, Maximize2, MessageCircleQuestion, Minimize2, Plus, Terminal, X } from 'lucide-react'
+import { Activity, Bot, Compass, FileText, FolderOpen, Globe, ListTree, Maximize2, MessageCircleQuestion, Minimize2, Plus, Terminal, X } from 'lucide-react'
 import { fileName } from '@shared/fileLinks'
 import { FilePreview } from '../files/FilePreview'
 import { useChat } from '../../chatStore'
@@ -16,11 +16,12 @@ import { TerminalPane } from './TerminalPane'
 import { BrowserPane } from './BrowserPane'
 import { SessionControlsPane } from './SessionControlsPane'
 import { BackgroundTasksPane } from './BackgroundTasksPane'
+import { AgentConversationPane } from './AgentConversationPane'
 import { SummaryDetail } from '../summary/SessionSummary'
 import { SUMMARY_LABELS } from '@shared/sessionSummary'
 
-const LABELS = { controls: '会话控制', start: '开始', files: '工作区文件', terminal: '终端', browser: '浏览器', summary: '摘要', chat: '侧边聊天', tasks: '后台任务' }
-const ICONS = { controls: ListTree, start: Compass, files: FolderOpen, terminal: Terminal, browser: Globe, summary: ListTree, chat: MessageCircleQuestion, tasks: Activity }
+const LABELS = { controls: '会话控制', start: '开始', files: '工作区文件', terminal: '终端', browser: '浏览器', summary: '摘要', chat: '侧边聊天', tasks: '后台任务', agents: '子 Agent' }
+const ICONS = { controls: ListTree, start: Compass, files: FolderOpen, terminal: Terminal, browser: Globe, summary: ListTree, chat: MessageCircleQuestion, tasks: Activity, agents: Bot }
 
 export function RightPanel({ sessionId, projectId }: { sessionId: string; projectId: string }) {
   const layout = useLayout()
@@ -108,6 +109,7 @@ export function RightPanel({ sessionId, projectId }: { sessionId: string; projec
                   {page.kind === 'summary' && page.sessionId && page.projectId && page.section && <SummaryDetail sessionId={page.sessionId} projectId={page.projectId} section={page.section} />}
                   {page.kind === 'chat' && options && <BtwPane pageId={page.id} sessionId={sessionId} cwd={page.cwd ?? cwd} options={options} active={active} />}
                   {page.kind === 'tasks' && cwd && <BackgroundTasksPane sessionId={sessionId} cwd={cwd} taskId={page.taskId} active={active} />}
+                  {page.kind === 'agents' && page.projectId && <AgentConversationPane sessionId={sessionId} projectId={page.projectId} agentId={page.agentId} active={active} />}
                   {page.kind === 'controls' && cwd && <SessionControlsPane sessionId={sessionId} cwd={cwd} active={active} turnDiff={page.turnDiff} />}
                   {page.kind === 'start' && <StartPane hasProject={Boolean(page.cwd ?? cwd)} onSelect={(kind) => choose(page, kind)} />}
                   {page.kind === 'files' && <ProjectFilesPane cwd={page.cwd ?? cwd} refreshKey={0} />}

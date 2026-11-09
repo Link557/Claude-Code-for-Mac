@@ -17,12 +17,20 @@ export interface SummaryItem {
   path?: string
   url?: string
   status?: ActivityStatus
+  /** SDK 返回的子 Agent ID；id 仍是创建它的工具调用 ID。 */
+  agentId?: string
+  /** 结构化 SDK 结果确认的身份；文本尾注仍需核对子记录的父工具 ID。 */
+  agentIdVerified?: boolean
+  appearanceIndex?: number
+  taskId?: string
   added?: number | null
   removed?: number | null
 }
 export interface SessionSummaryData {
   revision: number
   historyIncomplete: boolean
+  agentsIncomplete?: boolean
+  unlinkedAgentTaskIds?: string[]
   sections: Record<SummarySection, SummaryItem[]>
 }
 export function emptySessionSummary(): SessionSummaryData {

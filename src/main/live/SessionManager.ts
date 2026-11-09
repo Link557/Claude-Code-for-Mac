@@ -2,6 +2,7 @@ import { parseDesktopCommand, assertChatPrompt, type DesktopCommand } from '../.
 import { runLocalCommand } from '../localCommand'
 import { changeRule } from '../permissionRules'
 import { access } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import * as store from '../store'
 import { historyIds, recordEdit } from '../sessions'
 import type { SessionPreferences, SessionPreferencesRepository } from '../sessionPreferences'
@@ -78,6 +79,52 @@ export class SessionManager {
   async open(sessionId: string, projectPath: string): Promise<ChatSnapshot> {
     const transcript = await this.transcript(sessionId, projectPath)
     return this.snapshot(sessionId, this.transcripts.get(sessionId) ?? transcript)
+  }
+
+  async subagentMessages(sessionId: string, projectPath: string, toolUseId: string) {
+    const parent = await this.transcript(sessionId, projectPath)
+    if (!parent.projectPath || resolve(parent.projectPath) !== resolve(projectPath)) {
+      throw new Error('该会话不属于当前项目')
+    }
+    const historyId = this.historyId(sessionId)
+    const agent = parent.activity.snapshot().sections.agents.find(item => item.id === toolUseId)
+    if (!agent) throw new Error('该子 Agent 不属于当前会话')
+    const verifiedId = agent.agentIdVerified ? agent.agentId : undefined
+    if (!verifiedId && agent.status === 'running' && this.live.has(sessionId)) return []
+    const sdk = await loadSdk()
+    const dir = { dir: projectPath }
+    const read = (id: string) => sdk.getSubagentMessages(historyId, id, dir)
+    const belongs = (message: Awaited<ReturnType<typeof read>>[number], allowMissingTool: boolean) =>
+      message.session_id === historyId &&
+      (message.parent_tool_use_id === toolUseId || (allowMissingTool && !message.parent_tool_use_id))
+    let messages: Awaited<ReturnType<typeof read>> = []
+    if (verifiedId) {
+      messages = await read(verifiedId)
+      if (messages.some(message => !belongs(message, true))) {
+        throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+      }
+    } else {
+      // The SDK strips tool result metadata when loading the parent history.
+      // Recover the link from the SDK's structured child messages.
+      for (const id of new Set(await sdk.listSubagents(historyId, dir))) {
+        const candidate = await read(id)
+        if (!candidate.some(message => belongs(message, false))) continue
+        if (messages.length || candidate.some(message => !belongs(message, false))) {
+          throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+        }
+        messages = candidate
+      }
+    }
+    const current = parent.activity.snapshot().sections.agents.find(item => item.id === toolUseId)
+    if (this.transcripts.get(sessionId) !== parent || this.historyId(sessionId) !== historyId ||
+      !current || (current.agentIdVerified ? current.agentId : undefined) !== verifiedId) {
+      throw new Error('会话已更新，请重新读取子会话。')
+    }
+    const transcript = new Transcript(projectPath)
+    // 文件已由 SDK 按父会话与 Agent ID 定位；其中的主链就是该子 Agent 的会话。
+    for (const message of messages) transcript.apply({ ...message, parent_tool_use_id: null })
+    transcript.finish()
+    return transcript.messages
   }
 
   private snapshot(sessionId: string, transcript: Transcript): ChatSnapshot {

@@ -8,7 +8,7 @@ import type { CommandCatalogSnapshot } from '../commandCatalog'
 import type { BrowserState, ViewBounds } from '../workspace'
 import type { ScheduledRunStarted, ScheduledTask, ScheduledTaskInput } from '../schedules'
 import type { SkillCatalog } from '../skills'
-import type { BtwTurn, ChatEvent, ChatSnapshot, ContextUsage, Decision, QueueAction, McpStatus, SessionOptions } from '../chat'
+import type { BtwTurn, ChatEvent, ChatSnapshot, ContextUsage, Decision, QueueAction, McpStatus, SessionOptions, UiMessage } from '../chat'
 import type { AppState, DetectedFolder, EffortLevel, FileInfo, FilePreview, MetaInfo, ModelOption, PermissionMode, PlanUsage, Project, ProjectEntry, SessionSummary, Settings } from '../types'
 
 /** 渲染进程调用、主进程返回结果 */
@@ -143,6 +143,7 @@ export const contract = {
   },
   chat: {
     open: invoke<[sessionId: string, projectPath: string], ChatSnapshot>(),
+    subagentMessages: invoke<[sessionId: string, projectPath: string, toolUseId: string], UiMessage[]>(),
     start: invoke<[projectPath: string, text: string, options: SessionOptions], string>(),
     send: invoke<[sessionId: string, projectPath: string, text: string, options: SessionOptions, attachments?: string[]]>(),
     edit: invoke<[sessionId: string, projectPath: string, messageId: string, text: string]>(),

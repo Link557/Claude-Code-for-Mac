@@ -6,7 +6,7 @@ import { onProjectRemoved } from './projectLifecycle'
 export type RightTab = `file:${string}` | `page:${string}`
 export interface SidePage {
   id: `page:${string}`
-  kind: 'start' | 'files' | 'terminal' | 'browser' | 'summary' | 'chat' | 'controls' | 'tasks'
+  kind: 'start' | 'files' | 'terminal' | 'browser' | 'summary' | 'chat' | 'controls' | 'tasks' | 'agents'
   sessionId?: string
   projectId?: string
   section?: SummaryView
@@ -14,6 +14,7 @@ export interface SidePage {
   turnDiff?: string
   /** 后台任务页里选中的任务 */
   taskId?: string
+  agentId?: string
 }
 export interface OpenFile { path: string; line?: number; nonce: number }
 interface SessionLayout {
@@ -52,6 +53,7 @@ interface LayoutStore extends SessionLayout {
   closePage(id: SidePage['id']): void
   openSummary(sessionId: string, projectId: string, section: SummaryView): void
   openTasks(sessionId: string, projectId: string, taskId?: string): void
+  openAgent(sessionId: string, projectId: string, agentId: string): boolean
   openFile(path: string, line?: number): void
   closeFile(path: string): void
   setLeftWidth(width: number): void
@@ -109,6 +111,15 @@ export const useLayout = create<LayoutStore>((set, get) => {
       const id = existing?.id ?? `page:${crypto.randomUUID()}` as const
       if (!existing) set({ pages: [...get().pages, { id, kind: 'summary', sessionId, projectId, section }] })
       set({ rightOpen: true, rightTab: id })
+    },
+    openAgent: (sessionId, projectId, agentId) => {
+      if (sessionId !== get().activeSessionId) return false
+      const existing = get().pages.find(p => p.kind === 'agents')
+      if (!existing && sidebarPageCount(get()) >= MAX_SIDEBAR_PAGES) return false
+      const id = existing?.id ?? `page:${crypto.randomUUID()}` as const
+      const page: SidePage = { id, kind: 'agents', sessionId, projectId, agentId }
+      set({ pages: existing ? get().pages.map(p => p.id === id ? page : p) : [...get().pages, page], rightOpen: true, rightTab: id })
+      return true
     },
     openTasks: (sessionId, projectId, taskId) => {
       if (sessionId !== get().activeSessionId) return

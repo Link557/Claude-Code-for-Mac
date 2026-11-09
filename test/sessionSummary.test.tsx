@@ -17,7 +17,7 @@ beforeEach(() => {
   useDesk.setState({ view: { kind: 'session', sessionId: 'first', projectId: 'p' }, projects: [{ id: 'p', path: '/project', name: 'Workspace', addedAt: 0, collapsed: false }] })
   const base = { projectId: 'p', messages: [], state: 'idle' as const, approvals: [], loaded: true, options: { model: null, mode: 'default' as const, effort: null }, error: null }
   useChat.setState({ chats: { first: { ...base, summary }, second: { ...base, summary: emptySessionSummary() } } })
-  useSummaryUi.setState({ opened: {}, expanded: {} })
+  useSummaryUi.setState({ opened: {}, expanded: {}, announced: {} })
   useLayout.setState({ pages: [{ id: 'page:home', kind: 'start' }], openFiles: [], rightTab: 'page:home', rightOpen: false })
   window.desk = { workspace: { closePage: vi.fn().mockResolvedValue(undefined) } } as unknown as Window['desk']
 })
@@ -55,8 +55,8 @@ it('keeps summary visibility and data isolated by session and updates live', () 
     const summary = emptySessionSummary(); summary.sections.agents = [{ id: 'agent', title: 'Review agent', description: 'Explore', status: 'running' }]
     useChat.getState().handle('second', { kind: 'summary', summary })
   })
-  fireEvent.click(screen.getByRole('button', { name: '子 Agent分类' }))
-  expect(screen.getByText('Review agent')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '子 Agent分类' }).getAttribute('aria-expanded')).toBe('true')
+  expect(screen.getByRole('button', { name: '打开子 Agent：Review agent' })).toBeTruthy()
   expect(screen.getByText('进行中')).toBeTruthy()
   act(() => useChat.getState().handle('second', { kind: 'summary', summary: emptySessionSummary() }))
   expect(screen.queryByRole('button', { name: '子 Agent分类' })).toBeNull()

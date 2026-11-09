@@ -54,7 +54,7 @@ export class TaskTracker {
           continue
         }
         next.set(task.task_id, run)
-        const update = this.update(task.task_id, { ...task, backgrounded: true }, 'level')
+        const update = this.update(task.task_id, { ...task, backgrounded: true, ambient: task.ambient === true, skip_transcript: task.skip_transcript === true }, 'level')
         if (update) changed.push(update)
       }
       // A level says nothing about foreground tasks. Only tasks previously in the background set leave it.
@@ -80,7 +80,11 @@ export class TaskTracker {
     if (previous?.run_id && run && run < previous.run_id) return
     const newRun = Boolean(run && previous?.run_id !== run)
     if (!newRun && previous && terminal(previous.status) && source !== 'task_notification') {
-      if (source !== 'level') return
+      if (source !== 'level') {
+        // A late start can supply the association missing from the completion event.
+        if (typeof patch.tool_use_id !== 'string' || previous.tool_use_id) return
+        patch = { ...patch, status: previous.status }
+      }
       // Levels can update metadata after a terminal edge, but cannot undo it.
       // An 'ended' membership fallback has no terminal evidence and may rejoin.
       if (previous.status !== 'ended') patch = { ...patch, status: previous.status }
