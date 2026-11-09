@@ -253,7 +253,8 @@ button {
 .agent-crab { display: inline-block; width: 72px; max-width: 100%; aspect-ratio: 26 / 17; flex-shrink: 0; vertical-align: middle; }
 .agent-crab .crab { display: block; width: 100%; height: auto; }
 .agent-crab-small { width: 34px; }
-.agent-conversation-header::before {
+.agent-conversation-header::before,
+.chat-titlebar::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -263,6 +264,20 @@ button {
   backdrop-filter: blur(14px);
   mask-image: linear-gradient(#000 calc(100% - 20px), transparent);
 }
+
+.chat-titlebar,
+.chat-titlebar + .chat-view {
+  --chat-titlebar-height: 52px;
+  --chat-titlebar-clearance: 16px;
+  --chat-titlebar-edge: calc(var(--chat-titlebar-height) + var(--chat-titlebar-clearance));
+}
+.chat-titlebar { height: var(--chat-titlebar-height); }
+.chat-titlebar::before { bottom: calc(-1 * var(--chat-titlebar-clearance)); }
+/* Extend the glass below the controls so text fades after a short gap. */
+.chat-titlebar + .chat-view { margin-top: calc(-1 * var(--chat-titlebar-height)); }
+.chat-titlebar + .chat-view .chat-scroll { scroll-padding-top: var(--chat-titlebar-edge); }
+.chat-titlebar + .chat-view .chat-messages { padding-top: calc(var(--chat-titlebar-edge) + 0.5rem); }
+.chat-titlebar + .chat-view .chat-external-update { top: var(--chat-titlebar-edge); }
 .agent-crab[data-working="false"] .crab * { animation: none !important; }
 .agent-crab[data-working="true"] .crab-leg { animation: crab-kick .6s steps(2, end) var(--agent-delay, 0s) infinite alternate; }
 .agent-crab[data-working="true"] .crab-leg:nth-child(2n) { animation-direction: alternate-reverse; }

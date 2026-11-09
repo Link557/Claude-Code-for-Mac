@@ -132,7 +132,7 @@ export function App() {
       </div>
       <div data-workspace-shell className={`relative flex min-w-0 flex-1 ${windows ? 'overflow-hidden rounded-2xl border border-line bg-bg' : ''}`}>
       <main data-first-send-target={view.kind === 'session' && isFirstSendTarget(view.sessionId) ? '' : undefined} inert={rightOpen && expanded && view.kind === 'session'} className={`flex min-w-0 flex-1 flex-col bg-bg ${rightOpen && expanded ? 'overflow-hidden' : ''} ${windows && view.kind !== 'session' ? 'pt-3' : ''}`}>
-        {(!windows || view.kind === 'session') && <div className={`drag relative z-40 flex h-[52px] shrink-0 items-center gap-1 ${windows ? 'border-b border-line pl-5' : 'pl-[96px]'}`}>
+        {(!windows || view.kind === 'session') && <div className={`drag relative z-40 flex shrink-0 items-center gap-1 ${view.kind === 'session' ? 'chat-titlebar' : 'h-[52px]'} ${windows ? 'pl-5' : 'pl-[96px]'}`}>
           {!windows && sidebarCollapsed && (
             <div className="no-drag animate-fade-in flex gap-1.5">
               <IconButton label="展开侧栏" size="md" onClick={toggleSidebar}>
