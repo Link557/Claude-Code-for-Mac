@@ -35,12 +35,8 @@ export function ConnectionSettings({ cwd }: { cwd?: string }) {
     finally { setBusy(false) }
   }
   return <Section title="Claude Code 接入">
-    <p className="px-4 py-3 text-[13px] text-fg2">沿用本机 Claude Code 的登录和配置。检测不会发送对话，也不会修改 CLI 配置。Windows 首选已安装的原生 CLI，未找到时使用应用内置引擎。</p>
     <Row label="接入状态"><span role="status">{busy ? '正在检测…' : status ? statusLabel(status) : '尚未取得状态'}</span></Row>
     <Row label="运行引擎"><span className="text-fg2">{status?.source === 'installed' ? '本机已安装' : status?.source === 'custom' ? '手动选择' : status?.source === 'bundled' ? '应用内置' : '未找到'}</span></Row>
-    {status?.version && <Row label="CLI 版本"><span>{status.version}</span></Row>}
-    {status?.executable && <p className="break-all px-4 py-2 text-[12px] text-fg2">{status.executable}</p>}
-    {status?.configDirectory && <Row label="共享配置与历史"><span className="max-w-[460px] break-all text-[12px] text-fg2">{status.configDirectory}</span></Row>}
     {status?.authMethod && <Row label="认证方式"><span>{status.authMethod === 'claude.ai' ? 'Claude 账号登录' : status.authMethod === 'api_key' ? 'API 密钥' : status.authMethod}</span></Row>}
     {status?.loggedIn && status.provider === 'firstParty' && <p className="px-4 py-2 text-[12px] text-fg2">已读取本机认证；实际网络连通性和模型可用性以发送消息后的结果为准。</p>}
     {status?.provider && status.provider !== 'firstParty' && <p className="px-4 py-2 text-[12px] text-fg2">正在沿用其他供应商配置。模型权限、额度和计费由该供应商决定；Claude 官方登录不代表这些模型可用。</p>}
@@ -59,6 +55,12 @@ export function ConnectionSettings({ cwd }: { cwd?: string }) {
     </div>
     {(error || status?.error) && <p role="alert" className="px-4 py-2 text-[13px] text-danger">{error || status?.error}</p>}
     {notice && <p role="status" className="px-4 py-2 text-[13px] text-fg2">{notice}</p>}
-    <p className="px-4 py-3 text-[12px] text-fg2">在 CLI 完成当前一轮后，再从桌面端打开相同项目和历史会话继续。不要同时在两端发送同一会话。若 CLI 仅在某个终端临时设置环境变量，请从该终端启动桌面端以继承它们。此版本不读取 WSL 环境。</p>
+    {status && <details>
+      <summary className="cursor-pointer px-4 py-3 text-[13px] text-fg2">接入详情</summary>
+      {status.version && <Row label="CLI 版本"><span>{status.version}</span></Row>}
+      {status.executable && <Row label="CLI 路径"><span className="max-w-[460px] break-all text-fg2">{status.executable}</span></Row>}
+      {status.configDirectory && <Row label="共享配置与历史"><span className="max-w-[460px] break-all text-fg2">{status.configDirectory}</span></Row>}
+      <p className="px-4 pb-3 text-fg2">CLI 完成后，再在桌面端继续同一会话。</p>
+    </details>}
   </Section>
 }

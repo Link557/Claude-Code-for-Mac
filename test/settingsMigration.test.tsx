@@ -21,6 +21,18 @@ beforeEach(() => {
   window.desk = { meta: { cachedModels: vi.fn().mockResolvedValue(null), get: vi.fn().mockResolvedValue({ models: [], claudeVersion: null, subscriptionType: null }), configSnapshot: vi.fn().mockImplementation(async () => snapshot()), config: vi.fn(async (_path, value) => { if (value) { const index = value.indexOf('='); values[value.slice(0, index)] = value.slice(index + 1) }; return value ? 'Saved' : config }) }, chat: { reloadConfiguration: vi.fn().mockResolvedValue(undefined), applySetting: vi.fn().mockResolvedValue(undefined), mcp: vi.fn().mockResolvedValue([{ name: 'files', status: 'connected', tools: 7, scope: 'project' }]) } } as unknown as Window['desk']
 })
 afterEach(cleanup)
+it('distinguishes audited defaults, unknown engine values and managed settings', async () => {
+  vi.mocked(window.desk.meta.configSnapshot).mockResolvedValue({ cliVersion: '2.1.299', items: [
+    { key: 'language', values: [], value: 'default', source: 'default' },
+    { key: 'outputStyle', values: [], value: null, source: 'unknown' },
+    { key: 'autoCompact', values: ['true', 'false'], value: 'true', source: 'default', locked: '由组织策略管理' }
+  ] })
+  render(<ClaudeConfigSettings cwd="/project" />)
+  expect((await screen.findByText('回复语言')).getAttribute('title')).toBe('引擎默认')
+  expect(screen.getByPlaceholderText('无法确认当前值')).toBeTruthy()
+  expect(screen.getByText('由组织策略管理')).toBeTruthy()
+  expect(window.desk.meta.config).not.toHaveBeenCalled()
+})
 it('hides editable stale values during refresh and ignores superseded reads', async () => {
   const view = render(<ClaudeConfigSettings cwd="/project" />)
   await screen.findByRole('switch', { name: '自动压缩对话' })
@@ -280,8 +292,7 @@ it('reports native test delivery and provides a system-settings shortcut', async
   expect((screen.getByRole('button', { name: '正在发送…' }) as HTMLButtonElement).disabled).toBe(true)
   expect(screen.queryByRole('status')).toBeNull()
   await act(async () => deliver())
-  expect(screen.getByRole('status').textContent).toContain('已发送')
-  expect(screen.getByRole('status').textContent).toContain('共享屏幕')
+  expect(screen.getByRole('status').textContent).toBe('已发送测试通知。')
   fireEvent.click(screen.getByRole('button', { name: '打开系统设置' }))
   expect(openNotificationSettings).toHaveBeenCalledOnce()
 })

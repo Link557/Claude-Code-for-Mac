@@ -1,4 +1,4 @@
-// 模型信息来自 CLI 初始化。磁盘缓存只用于启动时展示，权威结果仍由 get 查询。
+// 缓存当前连接的模型选项，实时查询完成后更新。
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -10,6 +10,7 @@ import { claudeExecutable } from './sdk'
 
 const TTL = 5 * 60_000
 const DISK_TTL = 7 * 24 * 60 * 60_000
+const CACHE_VERSION = 4
 const diskWrites = new Map<string, Promise<void>>()
 const metaCache = new Map<string, { promise: Promise<MetaInfo>; expires: number }>()
 
@@ -45,7 +46,7 @@ export async function cachedModels(cwd = homedir()): Promise<ModelOption[] | nul
   try {
     const cacheKey = await key(cwd)
     const saved = JSON.parse(await readFile(filename(cacheKey), 'utf8'))
-    if (saved.version !== 2 || saved.key !== cacheKey || !Number.isFinite(saved.updatedAt) || saved.updatedAt > Date.now() || Date.now() - saved.updatedAt >= DISK_TTL || !validModels(saved.models)) return null
+    if (saved.version !== CACHE_VERSION || saved.key !== cacheKey || !Number.isFinite(saved.updatedAt) || saved.updatedAt > Date.now() || Date.now() - saved.updatedAt >= DISK_TTL || !validModels(saved.models)) return null
     return saved.models
   } catch { return null }
 }
@@ -54,7 +55,7 @@ async function saveModels(cacheKey: string, models: ModelOption[], current: () =
   const file = filename(cacheKey), temporary = `${file}.${randomUUID()}.tmp`
   try {
     await mkdir(join(app.getPath('userData'), 'model-catalog'), { recursive: true })
-    await writeFile(temporary, JSON.stringify({ version: 2, key: cacheKey, updatedAt: Date.now(), models }), { mode: 0o600 })
+    await writeFile(temporary, JSON.stringify({ version: CACHE_VERSION, key: cacheKey, updatedAt: Date.now(), models }), { mode: 0o600 })
     if (current()) await rename(temporary, file)
     else await rm(temporary, { force: true })
   } catch {
@@ -79,9 +80,10 @@ export async function get(cwd = homedir(), onCommands?: (commands: CommandInfo[]
   const cacheKey = await key(cwd)
   const existing = metaCache.get(cacheKey)
   if (existing && existing.expires > Date.now()) return existing.promise
-  const promise = readMetadata(cwd).then(async init => {
+  const promise = readMetadata(cwd, undefined, true).then(async init => {
     const result: MetaInfo = {
       models: init.models.map(m => ({ value: m.value, resolvedModel: m.resolvedModel, label: m.displayName || m.resolvedModel || m.value, efforts: m.supportsEffort ? (m.supportedEffortLevels ?? []) : [] })),
+      modelCatalogError: init.modelCatalogError,
       subscriptionType: init.account?.subscriptionType ?? null,
       email: init.account?.email ?? null,
       organization: init.account?.organization ?? null,
@@ -90,7 +92,7 @@ export async function get(cwd = homedir(), onCommands?: (commands: CommandInfo[]
     const current = () => metaCache.get(cacheKey) === entry
     if (current() && cacheKey === await key(cwd) && current()) {
       try { if (Array.isArray(init.commands)) onCommands?.(init.commands) } catch { /* 命令目录失败不影响模型查询 */ }
-      await updateDisk(cacheKey, result.models, current)
+      if (!result.modelCatalogError) await updateDisk(cacheKey, result.models, current)
       if (current()) {
         if (result.models.length === 0) metaCache.delete(cacheKey)
         else entry.expires = Date.now() + TTL

@@ -17,7 +17,7 @@ export function ClaudeConfigSettings({ cwd, keys, excludeKeys, searchable = true
   const sessionId = route.kind === 'settings' ? route.sessionId : undefined
   const items = snapshot?.items.filter(i => (!keys || keys.includes(i.key)) && !excludeKeys?.includes(i.key)).filter(i => `${i.key} ${CONFIG_LABELS[i.key] ?? ''}`.toLowerCase().includes(query.toLowerCase().trim())) ?? []
   const sections = (groups ?? [{ title: '对话设置' }]).map(group => ({ ...group, items: items.filter(item => (!group.keys || group.keys.includes(item.key)) && !group.excludeKeys?.includes(item.key)) })).filter(group => group.items.length)
-  return <section aria-label="Claude Code 配置" className="mt-5">
+  return <section aria-label="Claude Code 共享配置" className="mt-5">
     <div className="mb-3 flex items-center gap-3">
       {searchable && <input aria-label="搜索 Claude Code 设置" placeholder="搜索设置" value={query} onChange={e => setQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-accent" />}
       <button type="button" aria-label="刷新 Claude Code 设置" disabled={!!saving || reloading} onClick={refresh} className={`${settingsButtonClass} flex items-center gap-2`}><RefreshCw size={14} />刷新</button>
@@ -35,8 +35,9 @@ export function ClaudeConfigSettings({ cwd, keys, excludeKeys, searchable = true
         const boolean = item.values.length === 2 && item.values.includes('true') && item.values.includes('false') && (item.value === 'true' || item.value === 'false')
         const disabled = !!saving || reloading || !!item.locked
         const label = CONFIG_LABELS[item.key] ?? item.key
+        const source = item.source === 'default' ? '引擎默认' : item.source === 'unknown' ? '无法确认当前值' : undefined
         return <div key={item.key}>
-          <Row label={<label htmlFor={`config-${item.key}`}>{label}</label>} hint={item.locked ?? (item.source === 'default' ? '引擎默认 · 未单独设置' : item.source === 'unknown' ? `CLI ${snapshot.cliVersion || '版本未知'} 未提供可确认的生效值` : undefined)}>
+          <Row label={<label htmlFor={`config-${item.key}`} title={source}>{label}</label>} hint={item.locked}>
             {item.key === 'language' ? <ReplyLanguagePicker key={`${cwd}:${item.value}`} id={`config-${item.key}`} value={item.value} disabled={disabled} onSave={value => void save(item.key, value)} />
             : boolean ? <Toggle id={`config-${item.key}`} label={label} value={item.value === 'true'} disabled={disabled} title={item.locked} onChange={value => void save(item.key, String(value))} />
             : item.values.length ? <select id={`config-${item.key}`} disabled={disabled} value={item.value ?? ''} title={item.locked} onChange={e => void save(item.key, e.target.value)} className={settingsInputClass}>

@@ -35,10 +35,10 @@ function SummaryRow({ section, item, compact }: { section: SummarySection; item:
   )
 }
 export function ChangeCounts({ items }: { items: SummaryItem[] }) {
-  if (!items.length) return null
   const known = items.filter((item) => item.added != null && item.removed != null)
+  if (!known.length) return null
   return <span className="whitespace-nowrap tabular-nums">
-    {known.length > 0 && <><span className="text-green-600 dark:text-green-400">+{known.reduce((n, item) => n + item.added!, 0)}</span>{' '}<span className="text-danger">−{known.reduce((n, item) => n + item.removed!, 0)}</span></>}
-    {known.length < items.length && <span className="ml-1 text-[11px] text-fg3">{known.length ? '另有' : ''}{items.length - known.length} 项行数未知</span>}
+    <span className="text-green-600 dark:text-green-400">+{known.reduce((n, item) => n + item.added!, 0)}</span>{' '}<span className="text-danger">−{known.reduce((n, item) => n + item.removed!, 0)}</span>
+    {known.length < items.length && <span className="ml-1 text-[11px] text-fg3">已统计 {known.length}/{items.length} 个文件</span>}
   </span>
 }

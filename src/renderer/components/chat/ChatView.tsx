@@ -2,7 +2,7 @@ import { refreshSessionRuntime } from '../../refreshSessionRuntime'
 import { parseDesktopCommand } from '@shared/sessionCommand'
 import { errorText } from '../../ipcError'
 import { ModePicker } from '../newSession/ModePicker'
-import { Fragment, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import type { ComposerAttachment } from '@shared/attachments'
 import type { UiBlock, UiMessage } from '@shared/chat'
@@ -39,6 +39,8 @@ import { activityLabel, ThinkingSummary } from './ThinkingSummary'
 import { useComposerDrafts, EMPTY_DRAFT } from '../../composerDraftStore'
 import { UsagePill } from './UsageStats'
 import { ChatError } from './ChatError'
+import { ChatHistoryRail, JumpToLatest } from './ChatNavigation'
+import { useChatNavigation } from './useChatNavigation'
 
 // SDK 里没有 /btw，由应用自己实现，补进命令菜单
 const EXTRA_COMMANDS: CommandInfo[] = [
@@ -62,13 +64,15 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
     if (editing) store.updateEdit(sessionId, { attachments }); else store.updateDraft(sessionId, { attachments })
   }
   const [sendError, setSendError] = useState<string | null>(null)
-  const scroller = useRef<HTMLDivElement>(null)
-  const stick = useRef(true)
+  const activityTextRef = useRef('')
+  const autoScroll = useDesk(s => s.settings?.autoScroll ?? true)
+  const { scroller, turnList, away, activeIndex: activeTurn, followLatest, onScroll, jumpToTurn, jumpToLatest } =
+    useChatNavigation(chat?.messages, chat?.approvals.length, chat?.state, chat?.loaded, autoScroll)
 
   useEffect(() => {
     void load(sessionId, projectId)
-    stick.current = true
-  }, [load, sessionId, projectId])
+    followLatest()
+  }, [load, sessionId, projectId, followLatest])
 
   const unread = useSessionMarks((s) => !!s.unread[sessionId])
   const sidebarExpanded = useLayout((s) => s.rightOpen && s.expanded)
@@ -106,17 +110,10 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
   useCommandAutoOpen(chat?.messages, chat?.loaded)
   const panelOpen = usePanel((s) => s.panel !== null)
 
-  const autoScroll = useDesk(s => s.settings?.autoScroll ?? true)
-
-  // 停在底部时，新内容到来自动滚动；用户往上翻时不打扰
-  useLayoutEffect(() => {
-    const el = scroller.current
-    if (el && stick.current && autoScroll) el.scrollTop = el.scrollHeight
-  }, [chat?.messages, chat?.approvals.length, chat?.state, autoScroll])
-
   if (!chat) return <div className="flex-1" />
 
   const running = chat.state === 'running' || chat.state === 'awaiting'
+  const working = chat.state === 'running' && chat.activity?.phase !== 'stopping'
   const hasWaiting = Boolean(chat.queue?.items.some(item => item.editing || ['queued', 'failed'].includes(item.status)))
   // 本地命令在对话里只留一行记录：隐藏紧挨着它的那条用户输入
   const hidden = new Set(
@@ -125,7 +122,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
   const turns = turnsOf(chat.messages)
   const sessionUsage = sumUsage(chat.messages)
   const approval = chat.approvals[0]
-  const liveIndicator = running ? <ActivityIndicator iconOnly label={activityLabel(chat.state, chat.activity)} active={chat.state === 'running' && chat.activity?.phase !== 'stopping'} /> : null
+  const liveIndicator = running ? <ActivityIndicator iconOnly label={activityLabel(chat.state, chat.activity)} active={working} /> : null
   const activeIndex = chat.activity?.blockIndex
   const anchor = running && activeIndex !== undefined
     ? chat.messages.find(m => m.id === chat.activity?.messageId && !m.parentToolUseId && m.role === 'assistant' && m.blocks[activeIndex])
@@ -160,59 +157,67 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
   }
 
   const crabOverlap = !approval && !chat.optionsSaveError
+  const jumpAboveQueue = crabOverlap && Boolean(chat.queue?.items.length)
 
   return (
     <FileContext.Provider value={{ cwd }}>
       <div className="chat-view flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div
-            ref={scroller}
-            onScroll={(e) => {
-              const el = e.currentTarget
-              stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-            }}
-            className="chat-scroll min-h-0 flex-1 overflow-y-auto px-8"
-          >
-            <div className={`chat-messages mx-auto max-w-[760px] pt-2 ${crabOverlap ? 'pb-[76px]' : 'pb-6'}`}>
-              {external && (
-                <div className="chat-external-update sticky top-0 z-10 mb-2 flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-[13px] shadow-card">
-                  <span className="min-w-0 flex-1 text-fg2">会话有更新</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExternal(false)
-                      stick.current = true
-                      void reload(sessionId)
-                    }}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium hover:bg-hover"
-                  >
-                    <RefreshCw size={13} />
-                    更新
-                  </button>
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div
+              ref={scroller}
+              onScroll={onScroll}
+              className="chat-scroll min-h-0 flex-1 overflow-y-auto px-8"
+            >
+              <div className={`chat-messages mx-auto max-w-[760px] ${crabOverlap ? 'pb-[76px]' : 'pb-6'}`}>
+                {external && (
+                  <div className="chat-external-update sticky z-10 mb-2 flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-[13px] shadow-card">
+                    <span className="min-w-0 flex-1 text-fg2">会话有更新</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExternal(false)
+                        followLatest()
+                        void reload(sessionId)
+                      }}
+                      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium hover:bg-hover"
+                    >
+                      <RefreshCw size={13} />
+                      更新
+                    </button>
+                  </div>
+                )}
+                {!chat.loaded && <div className="py-10 text-center text-fg3">正在加载对话…</div>}
+                <div ref={turnList}>
+                  {turns.map((turn, i) => (
+                    <div key={turn[0]!.id}>
+                      {turn
+                        .filter((m) => m.role === 'user' && !m.parentToolUseId && !hidden.has(m.id))
+                        .map(renderMessage)}
+                      {groupTechnicalNotices(turn.filter((m) => m.role !== 'user' && !m.parentToolUseId && !hidden.has(m.id)))
+                        .map(entry => entry.kind === 'technical'
+                          ? <TechnicalRecords key={entry.messages[0]!.id} messages={entry.messages} />
+                          : renderMessage(entry.message))}
+                      {/* 每轮结束后列出这一轮改过的文件，点开在右栏看对比 */}
+                      {!(running && (anchor ? turn.includes(anchor) : i === turns.length - 1)) && (
+                        <>
+                          <TurnFiles messages={turn} cwd={cwd} />
+                          <AssistantActions turn={turn} />
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-              {!chat.loaded && <div className="py-10 text-center text-fg3">正在加载对话…</div>}
-              {turns.map((turn, i) => (
-                <Fragment key={turn[0]!.id}>
-                  {turn
-                    .filter((m) => m.role === 'user' && !m.parentToolUseId && !hidden.has(m.id))
-                    .map(renderMessage)}
-                  {groupTechnicalNotices(turn.filter((m) => m.role !== 'user' && !m.parentToolUseId && !hidden.has(m.id)))
-                    .map(entry => entry.kind === 'technical'
-                      ? <TechnicalRecords key={entry.messages[0]!.id} messages={entry.messages} />
-                      : renderMessage(entry.message))}
-                  {/* 每轮结束后列出这一轮改过的文件，点开在右栏看对比 */}
-                  {!(running && (anchor ? turn.includes(anchor) : i === turns.length - 1)) && (
-                    <>
-                      <TurnFiles messages={turn} cwd={cwd} />
-                      <AssistantActions turn={turn} />
-                    </>
-                  )}
-                </Fragment>
-              ))}
-              {!activeBlock && liveIndicator}
-              {chat.error && <ChatError error={chat.error} />}
+                {!activeBlock && liveIndicator}
+                {chat.error && <ChatError error={chat.error} />}
+              </div>
             </div>
+            {turns.length > 0 && <ChatHistoryRail turns={turns} activeIndex={activeTurn} onJump={jumpToTurn} />}
+            {away && (
+              <div className={`pointer-events-none absolute inset-x-0 z-[9] flex justify-center ${jumpAboveQueue ? 'bottom-[62px]' : 'bottom-2'}`}>
+                <JumpToLatest working={working} status={running && !working ? activityLabel(chat.state, chat.activity) : undefined} activityTextRef={activityTextRef} onJump={jumpToLatest} />
+              </div>
+            )}
           </div>
 
           {/* 螃蟹那 52px 叠到消息区上，消息从螃蟹后面透出来，不被白底截断；空白处不拦截点击 */}
@@ -239,6 +244,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
                 promptSuggestion={!editing && !hasWaiting ? chat.promptSuggestion : null}
                 sessionState={chat.state}
                 activity={chat.activity}
+                activityTextRef={activityTextRef}
                 cacheExpiresAt={cacheExpiresAt(chat.messages)}
                 key={`${sessionId}:${editing?.id ?? 'draft'}`}
                 clearOnSubmit={!editing}
@@ -274,7 +280,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
                 }}
                 onSubmit={async ({ prompt, attachments: files }) => {
                   setSendError(null)
-                  stick.current = true
+                  followLatest()
                   try {
                     if (editing) {
                       if (parseDesktopCommand(prompt)) throw new Error('不能把设置指令保存到消息队列，请取消编辑后执行。')

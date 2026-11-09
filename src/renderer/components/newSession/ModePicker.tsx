@@ -34,9 +34,7 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
   const [confirmFast, setConfirmFast] = useState(false)
   useEffect(() => { if (runtime && !runtime.error) setRetryError(null) }, [runtime])
   const demo = useDesk(s => s.demo)
-  const { models, loading, error, retry } = useModelCatalog(cwd)
-  const hasFable = models.some(m => m.value === 'fable' || /^claude-fable-/i.test(m.value) || /^fable(?:\s|$)/i.test(m.label))
-  const fableReason = loading ? '正在读取 Fable 配置…' : error ? '无法确认可用性，请重试读取模型' : '当前 CLI 未提供 Fable 或有效映射，请检查接入配置'
+  const { models, loading, error, cached, retry } = useModelCatalog(cwd)
   type Kind = 'model' | 'effort'
   const [open, setOpen] = useState<Kind | null>(demo?.openMenu === 'model' || demo?.openMenu === 'effort' ? demo.openMenu : null)
   const ref = useRef<HTMLDivElement>(null)
@@ -52,7 +50,7 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
     const timer = setTimeout(() => setClosing(null), 120)
     return () => clearTimeout(timer)
   }, [closing])
-  const requestedModel = models.find(m => m.value === options.model)
+  const requestedModel = models.find(m => m.value === (options.model ?? 'default'))
     ?? models.find(m => m.value !== 'default' && m.resolvedModel === options.model)
   const runtimeModel = runtime?.error ? undefined : runtime?.model
   const appliedModel = runtimeModel
@@ -97,13 +95,15 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
           {live && (modelMenu ? modelDiffers : effortDiffers) && <p className="px-2 py-2 text-xs text-fg2" title={!modelMenu ? runtime?.effortSource : undefined}>
             当前使用：{modelMenu ? modelLabel : effortLabel}（已选：{modelMenu ? requestedModelLabel : requestedEffortLabel}）
           </p>}
-          {loading && models.length === 0 && <p className="px-2 py-1 text-fg3">正在读取模型…</p>}
-          {error && <button className="picker-option" onClick={retry}>模型读取失败 · 重试</button>}
+          {loading && (models.length === 0 || (modelMenu && cached)) && <p className="px-2 py-1 text-fg3">正在读取模型…</p>}
+          {error && <div className="px-2 py-2 text-xs text-fg2">
+            <p>{error}</p>
+            <button className="mt-1 text-accent" onClick={retry}>模型读取失败 · 重试</button>
+          </div>}
           {!loading && !error && models.length === 0 && <button className="picker-option" onClick={retry}>没有可用模型 · 重试</button>}
 
           {modelMenu ? <div>
-            {inline !== 'fast' && models.map(m => <button key={m.value} aria-label={m.label} disabled={busy} aria-pressed={requestedModel?.value===m.value} className="picker-option" onClick={() => choose({model:m.value})}><span className="model-choice-name min-w-0 break-all">{m.label}{m.resolvedModel && m.resolvedModel !== m.label && <small>{m.resolvedModel}</small>}</span>{requestedModel?.value===m.value && <Check size={14}/>}</button>)}
-            {inline !== 'fast' && !hasFable && <button type="button" disabled aria-label="Fable" title={fableReason} className="picker-option opacity-50 cursor-not-allowed"><span className="model-choice-name">Fable<small>{fableReason}</small></span></button>}
+            {inline !== 'fast' && !cached && models.map(m => <button key={m.value} aria-label={m.label} disabled={busy} aria-pressed={requestedModel?.value===m.value} className="picker-option" onClick={() => choose({model:m.value})}><span className="model-choice-name min-w-0 break-all">{m.label}{m.resolvedModel && m.resolvedModel !== m.label && <small>{m.resolvedModel}</small>}</span>{requestedModel?.value===m.value && <Check size={14}/>}</button>)}
             {inline !== 'defaultModel' && <div className="picker-option picker-divider fast-option"><span className="model-choice-name flex items-center gap-2">Fast<WingedShoe/></span>
               <span className="fast-checkbox">
                 <input type="checkbox" aria-label="Fast" aria-describedby={fastHintId} checked={fast} disabled={busy || !fastKnown}

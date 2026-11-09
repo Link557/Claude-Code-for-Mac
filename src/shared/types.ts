@@ -86,6 +86,7 @@ export interface MetaInfo {
   email?: string | null
   organization?: string | null
   models: ModelOption[]
+  modelCatalogError?: string
   subscriptionType: string | null
   claudeVersion: string | null
 }

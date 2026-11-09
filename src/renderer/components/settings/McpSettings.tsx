@@ -12,7 +12,7 @@ export function McpSettings({ sessionId, cwd }: { sessionId: string | null; cwd:
     window.desk.chat.mcp(sessionId, cwd).then(value => { if (!cancelled) setList(value) }, e => { if (!cancelled) setError(errorText(e)) })
     return () => { cancelled = true }
   }, [sessionId, cwd, revision])
-  return <Section title="MCP 服务" description={sessionId ? '查看当前对话可用的外部工具及连接状态。' : '查看所选项目配置的外部工具及连接状态。'} action={<button type="button" onClick={() => setRevision(n => n + 1)} aria-label="刷新 MCP" className={`${settingsButtonClass} flex items-center gap-2`}><RefreshCw size={14} />刷新</button>}>
+  return <Section title="MCP 服务" action={<button type="button" onClick={() => setRevision(n => n + 1)} aria-label="刷新 MCP" className={`${settingsButtonClass} flex items-center gap-2`}><RefreshCw size={14} />刷新</button>}>
     {error ? <p role="alert" className="px-4 py-3 text-danger">{error}</p> : !list ? <p role="status" className="px-4 py-3 text-fg3">读取中…</p> : !list.length ? <p className="px-4 py-3 text-fg3">没有配置 MCP 服务器。</p> : list.map(server => <div key={server.name}>
       <Row label={server.name} hint={`${server.tools} 个工具${server.scope ? ` · ${SCOPES[server.scope] ?? server.scope}` : ''}`}>
         <span className={`text-[12px] ${server.status === 'failed' ? 'text-danger' : 'text-fg2'}`}>{STATUS[server.status] ?? server.status}</span>

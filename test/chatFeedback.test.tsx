@@ -2,6 +2,7 @@
 import { afterEach, expect, it } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { ChatError } from '../src/renderer/components/chat/ChatError'
+import { ChatHistoryRail } from '../src/renderer/components/chat/ChatNavigation'
 import { isInterruptionNotice } from '../src/shared/internalNotice'
 import type { UiMessage } from '../src/shared/chat'
 
@@ -26,6 +27,17 @@ it('keeps failure diagnostics available behind one collapsed summary', () => {
 it('shows a short actionable error directly', () => {
   const view = render(<ChatError error="连接失败，请重试" />)
   expect(view.getByRole('alert').textContent).toBe('连接失败，请重试')
+})
+
+it('summarizes a connection reset in the history preview when there is no reply to show', () => {
+  const input: UiMessage = { id: 'input', role: 'user', parentToolUseId: null, blocks: [{ kind: 'text', text: '请继续' }] }
+  const error: UiMessage = { id: 'error', role: 'assistant', parentToolUseId: null, blocks: [{ kind: 'text', text: 'API Error: Connection dropped (ECONNRESET)' }] }
+  const reply: UiMessage = { id: 'reply', role: 'assistant', parentToolUseId: null, blocks: [{ kind: 'text', text: '已完成第一步。' }] }
+  const view = render(<ChatHistoryRail turns={[[input, error]]} activeIndex={0} onJump={() => {}} />)
+  fireEvent.focus(view.getByRole('button'))
+  expect(view.getByRole('tooltip').textContent).toBe('请继续连接中断')
+  view.rerender(<ChatHistoryRail turns={[[input, reply, error]]} activeIndex={0} onJump={() => {}} />)
+  expect(view.getByRole('tooltip').textContent).toBe('请继续已完成第一步。')
 })
 
 it('normalizes only standalone stop notices and preserves user content', () => {

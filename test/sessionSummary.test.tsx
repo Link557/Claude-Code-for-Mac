@@ -61,6 +61,22 @@ it('keeps summary visibility and data isolated by session and updates live', () 
   act(() => useChat.getState().handle('second', { kind: 'summary', summary: emptySessionSummary() }))
   expect(screen.queryByRole('button', { name: '子 Agent分类' })).toBeNull()
 })
+it('keeps changed files visible and only displays known line counts', () => {
+  const summary = emptySessionSummary()
+  summary.sections.changes = [
+    { id: 'known', title: 'known.ts', description: '', added: 46, removed: 0 },
+    { id: 'unknown', title: 'unknown.ts', description: '' }
+  ]
+  useChat.getState().handle('first', { kind: 'summary', summary })
+  render(<SessionSummary sessionId="first" projectId="p" />)
+  fireEvent.click(screen.getByRole('button', { name: '切换摘要面板状态' }))
+  const category = screen.getByRole('button', { name: '变更分类' })
+  expect(category.textContent).toContain('+46 −0')
+  expect(category.textContent).toContain('已统计 1/2 个文件')
+  fireEvent.click(category)
+  expect(screen.getByText('unknown.ts')).toBeTruthy()
+  expect(screen.queryByText(/行数未知/)).toBeNull()
+})
 it('counts actual tabs and does not reset the badge when the sidebar closes', () => {
   render(<RightPanelToggle />)
   expect(screen.getByLabelText('已打开 1 个侧栏页面')).toBeTruthy()

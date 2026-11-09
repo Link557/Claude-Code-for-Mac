@@ -39,7 +39,6 @@ export function DisplayNameEditor({ compact = false }: { compact?: boolean }) {
       <label className="block text-[13px]">显示名称<input autoFocus maxLength={20} value={name} disabled={busy} onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void save() } }}
         className="mt-2 block w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-accent" /></label>
-      <p className="mt-3 text-[12px] text-fg3">仅保存在这台设备，用于个人展示和招呼语，不修改登录账号。</p>
       {error && <p role="alert" className="mt-2 text-[12px] text-danger">{error}</p>}
     </Dialog>}
   </>
