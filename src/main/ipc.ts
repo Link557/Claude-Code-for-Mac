@@ -229,7 +229,7 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void): v
   registerNamespace('chat', {
     prepareControls: (_e, id, path) => chats.prepareControls(id, path),
     open: (_e, id, path) => chats.openForDisplay(id, path),
-    start: (_e, path, text, options) => chats.start(path, text, options),
+    start: (_e, path, text, options) => chats.start(path, text, options, true),
     edit: (_e, id, path, messageId, text) => chats.edit(id, path, messageId, text),
     send: (_e, id, path, text, options, attachments) => chats.send(id, path, text, options, attachments),
     queue: (_e, id, path, action) => chats.queueAction(id, path, action),

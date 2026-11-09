@@ -151,7 +151,10 @@ it('discards an old CLI response when the executable changes', async () => {
 })
 
 it('shows resolved live values while keeping the requested automatic effort selected', async () => {
-  const models = [{ ...opus, resolvedModel: 'claude-opus-resolved' }]
+  const models = [
+    { value: 'default', label: 'Default (recommended)', resolvedModel: 'claude-opus-resolved', efforts: [] },
+    { ...opus, resolvedModel: 'claude-opus-resolved' }
+  ]
   vi.mocked(window.desk.meta.cachedModels).mockResolvedValue(models)
   vi.mocked(window.desk.meta.get).mockResolvedValue(meta(models))
   render(<ModePicker live options={{ model: 'opus', mode: 'default', effort: null }} runtime={{ model: 'claude-opus-resolved', effort: 'high' }} onChange={vi.fn()} />)

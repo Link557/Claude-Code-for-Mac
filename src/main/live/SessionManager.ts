@@ -100,14 +100,30 @@ export class SessionManager {
     }
   }
 
-  start(projectPath: string, text: string, options: SessionOptions): string {
+  start(projectPath: string, text: string, options: SessionOptions): string
+  start(projectPath: string, text: string, options: SessionOptions, confirmStartup: true): Promise<string>
+  start(projectPath: string, text: string, options: SessionOptions, confirmStartup = false): string | Promise<string> {
     assertChatPrompt(text)
     const sessionId = randomUUID()
     const transcript = new Transcript(projectPath)
     this.transcripts.set(sessionId, transcript)
     this.updatePrefs(sessionId, p => { p.options = options })
-    this.spawn(sessionId, projectPath, false, options, transcript).send(text)
-    return sessionId
+    const live = this.spawn(sessionId, projectPath, false, options, transcript)
+    if (confirmStartup && options.mode === 'auto') {
+      return this.live.use(sessionId, async () => {
+        try {
+          await live.readyForControls()
+          live.send(text)
+          return sessionId
+        } catch (error) {
+          live.close()
+          this.transcripts.delete(sessionId)
+          throw error
+        }
+      })
+    }
+    live.send(text)
+    return confirmStartup ? Promise.resolve(sessionId) : sessionId
   }
 
   /** 正在回复、等待确认或仍有后台任务在跑 */
@@ -143,13 +159,20 @@ export class SessionManager {
       const options = this.options(sessionId)
       const historyId = randomUUID()
       const submission = { uuid: randomUUID(), text, time: Date.now() }
-      this.submissionStore?.save(historyId, [...transcript.humanSubmissions(), submission])
-      recordEdit(sessionId, historyId)
       this.closeSession(sessionId)
-      if (this.prefs(sessionId).queue.items.length && !this.prefs(sessionId).queue.paused) this.pauseQueue(sessionId)
       this.activeHistoryIds.set(sessionId, historyId)
-      this.transcripts.set(sessionId, transcript)
       const replacement = this.spawn(sessionId, projectPath, false, options, transcript, at === null ? undefined : { from: sourceId, at })
+      try {
+        if (options.mode === 'auto') await replacement.readyForControls()
+        this.submissionStore?.save(historyId, [...transcript.humanSubmissions(), submission])
+        recordEdit(sessionId, historyId)
+      } catch (error) {
+        replacement.close()
+        this.activeHistoryIds.set(sessionId, sourceId)
+        throw error
+      }
+      if (this.prefs(sessionId).queue.items.length && !this.prefs(sessionId).queue.paused) this.pauseQueue(sessionId)
+      this.transcripts.set(sessionId, transcript)
       this.publish(sessionId, { kind: 'replaceHistory', snapshot: this.snapshot(sessionId, transcript) })
       replacement.send(text, submission.uuid)
     })
@@ -295,7 +318,12 @@ export class SessionManager {
     await this.live.use(sessionId, async () => { await this.live.get(sessionId)?.interrupt() })
   }
 
-  setMode(sessionId: string, mode: SessionOptions['mode']): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { mode })) }
+  setMode(sessionId: string, mode: SessionOptions['mode']): Promise<void> {
+    return this.lock(sessionId, () => {
+      const applied = this.live.get(sessionId)?.runtime.permissionMode
+      return this.applyOptions(sessionId, { mode }, applied !== undefined && applied !== mode)
+    })
+  }
   setModel(sessionId: string, model: string | null): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { model }, true)) }
   setWorkflows(sessionId: string, workflows: boolean): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { workflows })) }
   setFastMode(sessionId: string, enabled: boolean): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { fastMode: enabled }, true)) }

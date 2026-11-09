@@ -77,6 +77,7 @@ export interface SessionOptions {
 }
 export interface RuntimeSettings {
   model?: string
+  permissionMode?: PermissionMode | 'dontAsk'
   effort?: EffortLevel | null
   ultracode?: boolean
   fastMode?: string

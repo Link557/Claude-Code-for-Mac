@@ -75,9 +75,11 @@ export class LiveSession {
   private pending = new Map<string, Pending>()
   private input = new PushQueue<SDKUserMessage>()
   private releaseInput!: () => void
+  private startupError: Error | undefined
   private configured = new Promise<void>(resolve => { this.releaseInput = resolve })
   private async *configuredInput() {
     await this.configured
+    if (this.closed) return
     yield* this.input
   }
   private abort = new AbortController()
@@ -155,6 +157,11 @@ export class LiveSession {
         await this.q.applyFlagSettings({ effortLevel: null, ...(ultracode !== undefined ? { ultracode } : {}) })
         await this.refreshRuntime(false)
       }
+      // The launch option alone does not confirm auto. Apply it before opening the input stream.
+      if (options.mode === 'auto') {
+        try { await this.setMode('auto') }
+        catch (error) { throw new Error(`未能启用自动权限：${error instanceof Error ? error.message : String(error)}`) }
+      }
       if (!this.closed) this.init.emit({ kind: 'runtime', runtime: this.runtime })
       this.releaseInput()
       if (this.init.onCommands) void this.q.initializationResult().then((result) => {
@@ -162,12 +169,17 @@ export class LiveSession {
       }).catch(() => {})
       void this.pump(this.q)
     } catch (err) {
+      this.startupError = err instanceof Error ? err : new Error(String(err))
       this.onStartFailed(err)
       if (!this.closed) this.fail(err, '无法启动 Claude')
     }
   }
 
-  async readyForControls(): Promise<void> { await this.configured; await this.query() }
+  async readyForControls(): Promise<void> {
+    await this.configured
+    if (this.startupError) throw this.startupError
+    await this.query()
+  }
 
   get cwd(): string { return this.init.cwd }
 
@@ -220,6 +232,7 @@ export class LiveSession {
       if (!this.bypassAllowed) throw new Error('此对话启动时未启用跳过权限，请在高级设置中重新加载当前对话设置')
     }
     await (await this.query()).setPermissionMode(mode)
+    this.runtime = { ...this.runtime, permissionMode: mode }
   }
 
   async setModel(model: string | null): Promise<void> {
@@ -356,6 +369,7 @@ export class LiveSession {
         effortSource: environmentEffort !== undefined ? 'CLAUDE_CODE_EFFORT_LEVEL 环境变量' : undefined,
         fastMode: this.runtime.fastMode ?? init?.fast_mode_state,
         fastModeReason: this.runtime.fastMode !== undefined ? this.runtime.fastModeReason : init?.fast_mode_disabled_reason,
+        permissionMode: this.runtime.permissionMode,
         model: typeof a.model === 'string' ? a.model : undefined,
         effort: a.effort as RuntimeSettings['effort'],
         ultracode: typeof a.ultracode === 'boolean' ? a.ultracode : undefined,
@@ -364,7 +378,7 @@ export class LiveSession {
       }
     } catch (e) {
       if (request !== this.runtimeRequest || this.closed) return
-      this.runtime = { error: e instanceof Error ? e.message : String(e) }
+      this.runtime = { permissionMode: this.runtime.permissionMode, error: e instanceof Error ? e.message : String(e) }
     }
     if (publish && !this.closed) this.init.emit({ kind: 'runtime', runtime: this.runtime })
   }
@@ -499,6 +513,10 @@ export class LiveSession {
       return
     }
     if (m.type === 'system' && m.subtype === 'commands_changed') { this.commandsChanged = true; this.publishCommands(m.commands) }
+    if (m.type === 'system' && (m.subtype === 'init' || m.subtype === 'status') && m.session_id === this.init.sessionId && m.permissionMode && m.permissionMode !== this.runtime.permissionMode) {
+      this.runtime = { ...this.runtime, permissionMode: m.permissionMode }
+      this.init.emit({ kind: 'runtime', runtime: this.runtime })
+    }
     this.activity.apply(m)
     this.init.transcript.apply(m, 'live')
     if (m.type === 'system' && (m.subtype === 'background_tasks_changed' || m.subtype.startsWith('task_'))) this.publishTasks()

@@ -50,13 +50,18 @@ export function ModePicker({ options, runtime, live, cwd, busy, onChange, onRetr
     const timer = setTimeout(() => setClosing(null), 120)
     return () => clearTimeout(timer)
   }, [closing])
-  const requestedModel = models.find(m => m.value === options.model || (m.resolvedModel && m.resolvedModel === options.model))
-  const appliedModel = !runtime?.error && runtime?.model
-    ? models.find(m => m.value === runtime.model || m.resolvedModel === runtime.model) : undefined
+  const requestedModel = models.find(m => m.value === options.model)
+    ?? models.find(m => m.value !== 'default' && m.resolvedModel === options.model)
+  const runtimeModel = runtime?.error ? undefined : runtime?.model
+  const appliedModel = runtimeModel
+    ? requestedModel && (requestedModel.value === runtimeModel || requestedModel.resolvedModel === runtimeModel)
+      ? requestedModel
+      : models.find(m => m.value === runtimeModel) ?? models.find(m => m.value !== 'default' && m.resolvedModel === runtimeModel)
+    : undefined
   const model = live ? appliedModel ?? requestedModel : requestedModel
   const requestedModelLabel = requestedModel?.label ?? options.model ?? '默认模型'
-  const modelKnown = !!runtime?.model && !runtime.error
-  const modelLabel = live && modelKnown ? appliedModel?.label ?? runtime!.model! : requestedModelLabel
+  const modelKnown = !!runtimeModel
+  const modelLabel = live && runtimeModel ? appliedModel?.label ?? runtimeModel : requestedModelLabel
   const levels = [{ value: null, label: '自动', description: '跟随当前模型的默认思考程度' }, ...EFFORT_LEVELS.filter(l => model?.efforts.includes(l.value))]
   const requestedEffortLabel = EFFORT_LEVELS.find(l => l.value === options.effort)?.label ?? '自动'
   const effortKnown = !!runtime && !runtime.error && (runtime.effort === null || EFFORT_LEVELS.some(level => level.value === runtime.effort))
