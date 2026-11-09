@@ -312,7 +312,12 @@ export class SessionManager {
     await this.live.use(sessionId, async () => { await this.live.get(sessionId)?.interrupt() })
   }
 
-  setMode(sessionId: string, mode: SessionOptions['mode']): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { mode })) }
+  setMode(sessionId: string, mode: SessionOptions['mode']): Promise<void> {
+    return this.lock(sessionId, () => {
+      const applied = this.live.get(sessionId)?.runtime.permissionMode
+      return this.applyOptions(sessionId, { mode }, applied !== undefined && applied !== mode)
+    })
+  }
   setModel(sessionId: string, model: string | null): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { model }, true)) }
   setWorkflows(sessionId: string, workflows: boolean): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { workflows })) }
   setFastMode(sessionId: string, enabled: boolean): Promise<void> { return this.lock(sessionId, () => this.applyOptions(sessionId, { fastMode: enabled }, true)) }

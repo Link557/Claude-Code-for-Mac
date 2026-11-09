@@ -296,7 +296,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
                 chips={editing ? null :
                   <>
                     <ModePicker live options={chat.options} runtime={chat.runtime} cwd={cwd} busy={chat.optionsUpdating} onChange={panelCtx.setOptions} onRetry={() => refreshSessionRuntime(sessionId, cwd)} />
-                    <PermissionChip placement="top" value={chat.options.mode} onChange={(mode) => void setOptions(sessionId, { mode }).catch(() => {})} />
+                    <PermissionChip placement="top" value={chat.options.mode} applied={chat.runtime?.permissionMode} onChange={(mode) => void setOptions(sessionId, { mode }).catch(() => {})} />
                   </>
                 }
               />

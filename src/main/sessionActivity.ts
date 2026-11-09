@@ -1,6 +1,7 @@
 // SDK 活动适配层：只保存摘要所需的事实，不复制完整工具参数和返回正文。
 import { diffLines } from 'diff'
 import { basename, resolve } from 'node:path'
+import { agentResultFooter } from '../shared/agentResult'
 import type { ActivityStatus, SessionSummaryData, SummaryItem } from '../shared/sessionSummary'
 import { TaskTracker, type TrackedTask } from './taskTracker'
 
@@ -145,9 +146,7 @@ export class SessionActivity {
     const agent = this.agents.get(toolId)
     if (!agent) return
     const structured = str(output.agentId)
-    const footer = /(?:^|\n)agentId: ([\w-]+) \(([^()\r\n]+)\)\s*(?:<usage>[\s\S]*?<\/usage>)?\s*$/.exec(resultText)
-    const footerId = footer && (/^for resuming(?: to continue this agent(?: if needed)?)?$/.test(footer[2]) || footer[2] === `use SendMessage with to: '${footer[1]}', summary: '<5-10 word recap>' to continue this agent`) ? footer[1] : ''
-    const agentId = structured || (!agent.agentIdVerified ? footerId : '')
+    const agentId = structured || (!agent.agentIdVerified ? agentResultFooter(resultText)?.agentId : '')
     if (agentId && (agentId !== agent.agentId || Boolean(structured) !== Boolean(agent.agentIdVerified))) {
       agent.agentId = agentId; agent.agentIdVerified = Boolean(structured); this.changed()
     }

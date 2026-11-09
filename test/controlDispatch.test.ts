@@ -17,6 +17,7 @@ beforeEach(() => {
       close: () => stream.end(), initializationResult: async () => ({ models: [], commands: [], fast_mode_state: 'off', fast_mode_disabled_reason: 'sdk_opt_in_required' }),
       reinitialize: async () => ({ fast_mode_state: fast ? 'on' : 'off' }),
       setModel: vi.fn(async value => { model = value }),
+      setPermissionMode: vi.fn(async () => {}),
       applyFlagSettings: vi.fn(async patch => { if (patch.fastMode !== undefined) fast = patch.fastMode; if (patch.effortLevel !== undefined) effort = patch.effortLevel }),
       request: async () => ({ response: { effective: {}, sources: [], applied: { model, effort } } })
     })
@@ -32,6 +33,24 @@ async function start() {
   const first = (await input.next()).value
   return { id, query, input, first }
 }
+it('confirms automatic permission mode with the engine before releasing the first input', async () => {
+  const id = manager.start('/tmp', 'first', { ...options, mode: 'auto' })
+  await manager.prepareControls(id, '/tmp')
+  const { prompt, options: initial } = sdk.query.mock.calls[0][0]
+  expect(initial).toMatchObject({ model: 'opus', permissionMode: 'auto' })
+  expect(sdk.query.mock.results[0].value.setPermissionMode).toHaveBeenCalledWith('auto')
+  expect((await prompt[Symbol.asyncIterator]().next()).value.message.content).toBe('first')
+})
+it('shows an engine permission fallback and allows reselecting the same requested mode', async () => {
+  const id = manager.start('/tmp', 'first', { ...options, mode: 'auto' })
+  await manager.prepareControls(id, '/tmp')
+  const query = sdk.query.mock.results[0].value
+  query.push({ type: 'system', subtype: 'status', status: null, permissionMode: 'default' })
+  await vi.waitFor(async () => expect((await manager.open(id, '/tmp')).runtime?.permissionMode).toBe('default'))
+  await manager.setMode(id, 'auto')
+  expect(query.setPermissionMode).toHaveBeenCalledTimes(2)
+  expect((await manager.open(id, '/tmp')).runtime?.permissionMode).toBe('auto')
+})
 it('recognizes bare fast as a panel and rejects malformed controls instead of forwarding', () => {
   expect(parseDesktopCommand('/fast')).toEqual({ kind: 'panel', panel: 'fast' })
   for (const command of ['/fast invalid', '/effort invalid', '/model one two', '/config invalid']) expect(() => parseDesktopCommand(command)).toThrow()

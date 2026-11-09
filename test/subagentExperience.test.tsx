@@ -104,13 +104,24 @@ it('shows actual prompt, forwarded messages and history, rejecting a late respon
   updateAgents()
   const late: { resolve?: (messages: UiMessage[]) => void } = {}
   read.mockImplementation((_session: string, _path: string, id: string) => id === 'tool-0' ? new Promise(resolve => { late.resolve = resolve }) : Promise.resolve([message('second-disk', '第二个 Agent 的历史')]))
-  useChat.setState(state => ({ chats: { ...state.chats, s: { ...state.chats.s, messages: [message('main', '主 Agent 的内容'), message('live', '第一个 Agent 的实时内容', 'tool-0'), { ...message('tool-call', ''), blocks: [{ kind: 'tool', id: 'tool-0', name: 'Agent', input: { prompt: '实际派发的任务' }, result: { text: '实际返回的结果', isError: false } }] }] } } }))
+  const resultText = "实际返回的结果包含 agentId: 正文示例\n\nagentId: agent-0 (use SendMessage with to: 'agent-0', summary: '<5-10 word recap>' to continue this agent)\n<usage>subagent_tokens: 42\ntool_uses: 0\nduration_ms: 500</usage>"
+  const context: UiMessage = { ...message('context', '引擎补发的上下文', 'tool-0'), role: 'user' }
+  useChat.setState(state => ({ chats: { ...state.chats, s: { ...state.chats.s, messages: [message('main', '主 Agent 的内容'), context, message('live', '第一个 Agent 的实时内容', 'tool-0'), { ...message('tool-call', ''), blocks: [{ kind: 'tool', id: 'tool-0', name: 'Agent', input: { prompt: '实际派发的任务' }, result: { text: resultText, isError: false } }] }] } } }))
   const view = render(<AgentConversationPane sessionId="s" projectId="p" agentId="tool-0" active />)
+  expect(screen.getByRole('heading', { name: '写作' })).toBeTruthy()
+  expect(view.container.querySelectorAll('.agent-crab')).toHaveLength(1)
+  const disclosure = screen.getByText('会话详情').parentElement
+  expect(disclosure).toHaveProperty('open', false)
+  expect(screen.getByText('引擎补发的上下文').closest('details')).toBe(disclosure)
+  expect(screen.getByText('第一个 Agent 的实时内容').closest('details')).toBeNull()
   expect(screen.getByText('实际派发的任务')).toBeTruthy()
   expect(screen.getByText('第一个 Agent 的实时内容')).toBeTruthy()
-  expect(screen.getByText('实际返回的结果')).toBeTruthy()
+  expect(screen.getByText('实际返回的结果包含 agentId: 正文示例')).toBeTruthy()
+  expect(screen.queryByText(/SendMessage|subagent_tokens/)).toBeNull()
   expect(screen.queryByText('主 Agent 的内容')).toBeNull()
   view.rerender(<AgentConversationPane sessionId="s" projectId="p" agentId="tool-1" active />)
+  expect(screen.getByRole('heading', { name: '构思' })).toBeTruthy()
+  expect(view.container.querySelectorAll('.agent-crab')).toHaveLength(1)
   expect(await screen.findByText('第二个 Agent 的历史')).toBeTruthy()
   await act(async () => late.resolve?.([message('late', '过期的第一份历史')]))
   expect(screen.queryByText('过期的第一份历史')).toBeNull()

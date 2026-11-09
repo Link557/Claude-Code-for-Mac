@@ -154,6 +154,12 @@ export class LiveSession {
         await this.q.applyFlagSettings({ effortLevel: null, ...(ultracode !== undefined ? { ultracode } : {}) })
         await this.refreshRuntime(false)
       }
+      // CLI 2.1.299 may start in default despite the launch option. Wait for the
+      // engine to acknowledge auto before any user input can reach it.
+      if (options.mode === 'auto') {
+        try { await this.setMode('auto') }
+        catch (error) { throw new Error(`未能启用自动权限：${error instanceof Error ? error.message : String(error)}`) }
+      }
       if (!this.closed) this.init.emit({ kind: 'runtime', runtime: this.runtime })
       this.releaseInput()
       if (this.init.onCommands) void this.q.initializationResult().then((result) => {
@@ -219,6 +225,7 @@ export class LiveSession {
       if (!this.bypassAllowed) throw new Error('此对话启动时未启用跳过权限，请在高级设置中重新加载当前对话设置')
     }
     await (await this.query()).setPermissionMode(mode)
+    this.runtime = { ...this.runtime, permissionMode: mode }
   }
 
   async setModel(model: string | null): Promise<void> {
@@ -355,6 +362,7 @@ export class LiveSession {
         effortSource: environmentEffort !== undefined ? 'CLAUDE_CODE_EFFORT_LEVEL 环境变量' : undefined,
         fastMode: this.runtime.fastMode ?? init?.fast_mode_state,
         fastModeReason: this.runtime.fastMode !== undefined ? this.runtime.fastModeReason : init?.fast_mode_disabled_reason,
+        permissionMode: this.runtime.permissionMode,
         model: typeof a.model === 'string' ? a.model : undefined,
         effort: a.effort as RuntimeSettings['effort'],
         ultracode: typeof a.ultracode === 'boolean' ? a.ultracode : undefined,
@@ -363,7 +371,7 @@ export class LiveSession {
       }
     } catch (e) {
       if (request !== this.runtimeRequest || this.closed) return
-      this.runtime = { error: e instanceof Error ? e.message : String(e) }
+      this.runtime = { permissionMode: this.runtime.permissionMode, error: e instanceof Error ? e.message : String(e) }
     }
     if (publish && !this.closed) this.init.emit({ kind: 'runtime', runtime: this.runtime })
   }
@@ -495,6 +503,10 @@ export class LiveSession {
       return
     }
     if (m.type === 'system' && m.subtype === 'commands_changed') { this.commandsChanged = true; this.publishCommands(m.commands) }
+    if (m.type === 'system' && (m.subtype === 'init' || m.subtype === 'status') && m.permissionMode && m.permissionMode !== this.runtime.permissionMode) {
+      this.runtime = { ...this.runtime, permissionMode: m.permissionMode }
+      this.init.emit({ kind: 'runtime', runtime: this.runtime })
+    }
     this.activity.apply(m)
     this.init.transcript.apply(m, 'live')
     if (m.type === 'system' && (m.subtype === 'background_tasks_changed' || m.subtype.startsWith('task_'))) this.publishTasks()

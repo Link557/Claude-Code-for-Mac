@@ -253,6 +253,16 @@ button {
 .agent-crab { display: inline-block; width: 72px; max-width: 100%; aspect-ratio: 26 / 17; flex-shrink: 0; vertical-align: middle; }
 .agent-crab .crab { display: block; width: 100%; height: auto; }
 .agent-crab-small { width: 34px; }
+.agent-conversation-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+  mask-image: linear-gradient(#000 calc(100% - 20px), transparent);
+}
 .agent-crab[data-working="false"] .crab * { animation: none !important; }
 .agent-crab[data-working="true"] .crab-leg { animation: crab-kick .6s steps(2, end) var(--agent-delay, 0s) infinite alternate; }
 .agent-crab[data-working="true"] .crab-leg:nth-child(2n) { animation-direction: alternate-reverse; }

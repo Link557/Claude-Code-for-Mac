@@ -566,19 +566,22 @@ export function ProjectChip({ placement = 'top' }: { placement?: Placement }) {
   )
 }
 
-export function PermissionChip({ value, onChange, placement = 'top' }: { value: PermissionMode; onChange(v: PermissionMode): void; placement?: Placement }) {
+export function PermissionChip({ value, applied, onChange, placement = 'top' }: { value: PermissionMode; applied?: PermissionMode | 'dontAsk'; onChange(v: PermissionMode): void; placement?: Placement }) {
   const { settings, demo } = useDesk()
   const modes = PERMISSION_MODES.filter((m) => m.value !== 'bypassPermissions' || settings?.allowBypass)
   // 当前生效模式不受“是否允许选择”影响，关闭开关不会撤销已有会话权限。
-  const current = PERMISSION_MODES.find((m) => m.value === value)
+  const mode = applied ?? value
+  const label = mode === 'dontAsk' ? '不询问' : PERMISSION_MODES.find(m => m.value === mode)?.label ?? mode
+  const requested = PERMISSION_MODES.find(m => m.value === value)?.label ?? value
+  const mismatch = mode !== value ? `引擎当前使用「${label}」，已选「${requested}」` : undefined
   return (
     <Menu
       placement={placement}
       width={280}
       defaultOpen={demo?.openMenu === 'permission'}
       trigger={({ toggle }) => (
-        <Chip icon={<Shield size={13} />} onClick={toggle} title="权限模式">
-          {current?.label ?? value}
+        <Chip icon={<Shield size={13} />} onClick={toggle} title={mismatch ? `权限模式 · ${mismatch}` : '权限模式'}>
+          {label}
         </Chip>
       )}
       items={modes.map((m) => ({
@@ -586,9 +589,10 @@ export function PermissionChip({ value, onChange, placement = 'top' }: { value: 
         label: m.label,
         description: m.description,
         danger: m.value === 'bypassPermissions',
-        checked: m.value === value,
+        checked: m.value === mode,
         onSelect: () => onChange(m.value)
       }))}
+      footer={mismatch && <p className="px-2.5 py-2 text-[12px] text-fg2">{mismatch}</p>}
     />
   )
 }
