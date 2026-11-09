@@ -7,7 +7,7 @@ import { UsageNav } from '../src/renderer/components/usage/UsageNav'
 import { useDesk } from '../src/renderer/store'
 import { useUsage } from '../src/renderer/usageStore'
 import { EMPTY_ANALYTICS } from '../src/shared/usageAnalytics'
-import { EMPTY_HISTORY, HISTORY_KEY } from '../src/renderer/greeting'
+import { EMPTY_HISTORY } from '../src/renderer/greeting'
 
 beforeEach(() => {
   useDesk.setState({ username: '本机用户', settings: { theme: 'light', defaultModel: 'opus', defaultPermissionMode: 'default', defaultEffort: null, claudePath: null, allowBypass: false } })
@@ -18,7 +18,7 @@ beforeEach(() => {
     chat: { onEvent: vi.fn(() => () => {}) }
   } as unknown as Window['desk']
 })
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
 it('edits a local name offline and updates both shared entry points', async () => {
   render(<><DisplayNameEditor /><DisplayNameEditor compact /></>)
@@ -62,7 +62,7 @@ it('allows editing while account lookup fails and uses the local name for subseq
   await screen.findByText('小林')
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(2026, 10, 8, 9))
   vi.spyOn(Math, 'random').mockReturnValue(0)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(EMPTY_HISTORY))
+  vi.stubGlobal('localStorage', { getItem: () => JSON.stringify(EMPTY_HISTORY), setItem: vi.fn() })
   act(() => { useDesk.setState({ projects: [{ id: 'p', name: 'p', path: '/tmp', addedAt: 0, collapsed: false }] }); useDesk.getState().newChat() })
   expect(useDesk.getState().greeting).toBe('早上好，小林')
 })
