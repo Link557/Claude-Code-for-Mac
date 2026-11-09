@@ -29,6 +29,7 @@ import { createHumanSubmissionRepository } from './humanSubmissionRepository'
 import { appNotificationHandlers } from './appNotifications'
 import { Scheduler } from './schedules'
 import { readSkillBody, readSkillCatalog, setPluginEnabled } from './skills'
+import { windowControlHandlers } from './windowControls'
 import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable, powershellResumeCommand } from './connection'
 
 export function applyTheme(theme: Settings['theme']): void {
@@ -100,6 +101,7 @@ export function projectMetadata(cwd: string) {
 
 
 export function registerIpc(demo: DemoState | null, focusWindow?: () => void, finishSplash?: () => void): void {
+  registerNamespace('window', windowControlHandlers)
   registerNamespace('connection', {
     status: async (_e, path) => {
       const status = await connectionStatus(path)

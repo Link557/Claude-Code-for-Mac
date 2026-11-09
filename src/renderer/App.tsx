@@ -24,6 +24,8 @@ import { AddProjectDialog } from './components/dialogs/AddProjectDialog'
 import { ImportHistoryDialog } from './components/dialogs/ImportHistoryDialog'
 import { SearchDialog } from './components/dialogs/SearchDialog'
 import { SessionSummary } from './components/summary/SessionSummary'
+import { WindowPin } from './components/ui/WindowPin'
+import { WelcomePage } from './components/welcome/WelcomePage'
 
 export function App() {
   const windows = isWindows()
@@ -36,6 +38,7 @@ export function App() {
     useDesk()
 
   const reduceMotion = useDesk(s => s.settings?.reduceMotion ?? false)
+  const welcomeOpen = useDesk(s => s.welcomeOpen)
   useLayoutEffect(() => {
     syncFirstSend(view.kind === 'session' ? view.sessionId : undefined)
   }, [view])
@@ -77,6 +80,7 @@ export function App() {
   // ⌘K 搜索会话；⌘B 左栏、⌘⇧B 右栏
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (useDesk.getState().welcomeOpen) return
       if (!primaryModifier(e)) return
       const key = e.key.toLowerCase()
       if (key === 'k') {
@@ -110,7 +114,7 @@ export function App() {
   const title = view.kind === 'session' ? sessions[view.projectId]?.find((s) => s.id === view.sessionId)?.title : undefined
 
   return (
-    <div className={`relative flex h-full ${windows ? `pb-2 pr-2 ${sidebarCollapsed ? 'pl-2' : ''}` : ''}`}>
+    <><div inert={welcomeOpen} className={`relative flex h-full ${windows ? `pb-2 pr-2 ${sidebarCollapsed ? 'pl-2' : ''}` : ''}`}>
       {windows && <div className="drag fixed inset-x-0 top-0 z-50 flex h-10 items-center bg-sidebar pl-3 pr-36" data-window-toolbar>
         <div className="no-drag flex items-center gap-2">
           <IconButton label={sidebarCollapsed ? '展开侧栏' : '收起侧栏'} size="md" onClick={toggleSidebar}><PanelLeft size={18} /></IconButton>
@@ -170,6 +174,6 @@ export function App() {
       {pendingProjectPath && <AddProjectDialog path={pendingProjectPath} />}
       {importCandidates && <ImportHistoryDialog candidates={importCandidates} />}
       {searchOpen && <SearchDialog />}
-    </div>
+    </div>{welcomeOpen && <WelcomePage />}{windows && <WindowPin visible={view.kind === 'session' && !welcomeOpen} />}</>
   )
 }

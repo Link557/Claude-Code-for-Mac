@@ -1,7 +1,7 @@
 {
   "name": "claude-desk",
   "productName": "Claude Code",
-  "version": "0.3.52-win.18",
+  "version": "0.3.52-win.19",
   "private": true,
   "description": "中文 Claude Code 桌面客户端，支持 macOS 与 Windows 原生环境",
   "main": "out/main/index.js",

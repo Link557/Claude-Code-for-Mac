@@ -1,7 +1,8 @@
 import type { ClaudeConfigItem, ClaudeConfigSnapshot } from '../shared/claudeConfig'
 
-// Verified against the native /config descriptors and global defaults in CLI 2.1.301.
-// Keep the compatibility boundary explicit: never apply these defaults to another CLI version.
+// CLI defaults are version-bound. The visible settings below were also audited
+// against native CLI 2.1.299's /config descriptors and global defaults.
+const AUDITED_299_DEFAULTS = new Set(['autoCompact', 'language', 'outputStyle', 'useAutoModeDuringPlan', 'workflowKeywordTriggerEnabled', 'worktreeBaseRef', 'workflowSizeGuideline', 'switchModelsOnFlag'])
 const LEGACY: Record<string, [string, string | boolean, boolean?]> = {
   agentPushNotifEnabled: ['agentPushNotifEnabled', false, true],
   autoCompact: ['autoCompactEnabled', true, true], autoConnectIde: ['autoConnectIde', false],
@@ -29,13 +30,13 @@ type Dict = Record<string, any>
 const get = (data: Dict, path: string): unknown => path.split('.').reduce<any>((value, key) => value && typeof value === 'object' ? value[key] : undefined, data)
 const scalar = (value: unknown): value is string | boolean | number => typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value)
 export function resolveConfigValues(catalog: { key: string; values: string[] }[], cliVersion: string, effective: Dict, legacy: Dict, subscription: string | undefined, sources: { source: string; settings: Dict }[] = [], env: Record<string, string | undefined> = {}): ClaudeConfigSnapshot {
-  const compatible = cliVersion === '2.1.301'
   const pro = subscription?.toLowerCase().includes('pro')
   const flag = (key: string, fallback: boolean): boolean => {
     const v = legacy.cachedGrowthBookFeatures?.[key]
     return typeof v === 'boolean' ? v : typeof v?.value === 'boolean' ? v.value : fallback
   }
   const items: ClaudeConfigItem[] = catalog.map(item => {
+    const compatible = cliVersion === '2.1.301' || cliVersion === '2.1.299' && AUDITED_299_DEFAULTS.has(item.key)
     let value: unknown, settingPath: string | undefined, source: ClaudeConfigItem['source'] = 'unknown'
     const globalRule = LEGACY[item.key], rule = SETTINGS[item.key]
     if (globalRule) {

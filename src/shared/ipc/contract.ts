@@ -55,6 +55,11 @@ export const contract = {
     close: invoke<[id: string]>(),
     onState: event<[id: string, state: BrowserState]>()
   },
+  window: {
+    alwaysOnTop: invoke<[], boolean>(),
+    toggleAlwaysOnTop: invoke<[], boolean>(),
+    onAlwaysOnTopChanged: event<[enabled: boolean]>()
+  },
   app: {
     splashFinished: invoke<[]>(),
     notify: invoke<[title: string, body: string, silent: boolean, sessionId?: string]>(),

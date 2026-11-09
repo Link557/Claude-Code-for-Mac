@@ -21,6 +21,8 @@ interface DeskState {
   projects: Project[]
   sessions: Record<string, SessionSummary[]>
   settings: Settings | null
+  welcomeOpen: boolean
+  setWelcomeOpen(open: boolean): void
   view: View
   selectedProjectId: string | null
   draftOverrides: Partial<SessionOptions>
@@ -81,6 +83,8 @@ export const useDesk = create<DeskState>((set, get) => ({
   projects: [],
   sessions: {},
   settings: null,
+  welcomeOpen: false,
+  setWelcomeOpen: welcomeOpen => set({ welcomeOpen }),
   view: { kind: 'new' },
   selectedProjectId: null,
   draftOverrides: {},
@@ -101,6 +105,7 @@ export const useDesk = create<DeskState>((set, get) => ({
       demo,
       projects,
       settings,
+      welcomeOpen: demo ? demo.route === 'welcome' : settings.welcomeCompleted !== true,
       selectedProjectId: projects[0]?.id ?? null,
       draftOverrides: {},
       view: demo?.route === 'settings' ? { kind: 'settings' } : { kind: 'new' },

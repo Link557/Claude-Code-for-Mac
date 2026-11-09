@@ -21,3 +21,10 @@ it('repository settings may disable remote control but cannot enable it', () => 
   expect(values(resolveConfigValues(catalog, '2.1.301', { remoteControlAtStartup: true }, {}, 'pro', [{ source: 'projectSettings', settings: { remoteControlAtStartup: true } }])).remoteControl).toBe('default')
   expect(values(resolveConfigValues(catalog, '2.1.301', {}, { remoteControlAtStartup: true }, 'pro', [{ source: 'localSettings', settings: { remoteControlAtStartup: false } }])).remoteControl).toBe('false')
 })
+
+it('resolves audited visible defaults on installed native CLI 2.1.299, preserving explicit overrides', () => {
+ const shown=['autoCompact','language','outputStyle','useAutoModeDuringPlan','workflowKeywordTriggerEnabled','worktreeBaseRef','workflowSizeGuideline','switchModelsOnFlag'].map(key=>({key,values:[]}))
+ expect(values(resolveConfigValues(shown,'2.1.299',{}, {},'Claude Pro'))).toMatchObject({autoCompact:'true',language:'default',outputStyle:'default',useAutoModeDuringPlan:'true',workflowKeywordTriggerEnabled:'true',worktreeBaseRef:'fresh',workflowSizeGuideline:'small',switchModelsOnFlag:'Switch automatically'})
+ expect(values(resolveConfigValues(shown,'2.1.299',{autoCompactEnabled:false,worktree:{baseRef:'head'}},{},'Claude Pro'))).toMatchObject({autoCompact:'false',worktreeBaseRef:'head'})
+ expect(resolveConfigValues([{key:'future',values:[]}],'2.1.299',{}, {},undefined).items[0].value).toBeNull()
+})

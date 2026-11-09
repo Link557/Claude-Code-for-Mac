@@ -23,6 +23,12 @@ Fable 始终保留入口。CLI 未返回该项且没有有效映射时，入口�
 
 配置语义参考：[Claude Code 模型配置](https://code.claude.com/docs/en/model-config)。
 
+## CC Switch 与更新清理约定
+
+CC Switch 常规切换会改写共享 `settings.json` 的供应商字段，见其[配置文件说明](https://github.com/farion1231/cc-switch/blob/main/docs/user-manual/en/5-faq/5.1-config-files.md)。桌面端监视该文件，失效目录缓存并刷新模型映射；这不等于改写桌面默认模型或正在运行的会话。桌面默认模型和会话显式选择优先保留。如果新供应商映射了当前别名，重新建立会话进程后会使用新映射；如果仅改了 CLI 默认模型，而桌面选了其他别名或完整 ID，需要在桌面重新选择。地址和认证变化建议在空闲时重新加载当前对话设置，必要时重启桌面端。仅改终端临时环境需要从相应终端重新启动。代理接管模式若只改变代理内部上游、不修改 CLI 配置，桌面不能据此获知真实后端模型，只能显示 CLI 报告的 ID。
+
+按用户要求，今后每次 Windows 更新：先完成打包和新版验收，再更新桌面、开始菜单两个快捷方式并核对运行路径，最后清理旧 Windows 打包目录与旧 ZIP，仅保留最新可运行版。使用 `scripts/cleanup-windows-builds.ps1 -KeepDirectory <最新打包目录> -ObsoleteDirectory <已确认清理的旧打包目录>`；可先加 `-WhatIf` 检查目标。脚本仅将显式指定的旧目录移入回收站，且要求其为同级 `claude-desk-windows-*` 且含预期可执行文件的目录，拒绝链接目录、仍运行的旧版和未更新的快捷方式。不清理应用用户数据、CLI 历史、Git 分支/标签或 Mac 版本。2026-11-08 已清除 19 个旧 Windows 打包目录，仅保留 win.12。
+
 ## Windows win.2 打包验收
 
 2026-11-08：`0.3.52-win.2` 完整便携 ZIP 打包成功。使用打包后的 exe、隔离的应用数据和 CLI 配置，直接核对真实 `meta.get` 与模型菜单，确认 `sonnet → deepseek-chat` 和原固定名单之外的模型项可见。没有发送模型消息或修改用户配置。随后以用户正常配置启动新版，模型菜单显示 CLI 当前返回的 Default、Opus、Fable、Sonnet、Haiku 及实际 ID。29 项相关测试、类型检查与应用构建通过。

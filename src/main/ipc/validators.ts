@@ -66,6 +66,7 @@ const decision = arg('decision', z.discriminatedUnion('type', [
 ]))
 
 const settingsPatch = arg('patch', z.object({
+  welcomeCompleted: z.boolean(),
   displayName: z.string().trim().min(1).max(20).regex(/^[^\p{Cc}\p{Cf}]+$/u).nullable(),
   retainedSessions: z.number().int().min(1).max(16),
   sessionIdleMinutes: z.number().int().min(1).max(120),
@@ -100,6 +101,8 @@ const scheduledTask = () => arg('task', z.object({
 const nullableModel = () => arg('model', z.string().nullish().transform(value => value ?? null))
 
 export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
+  'window:alwaysOnTop': args(),
+  'window:toggleAlwaysOnTop': args(),
   'files:diff': args(text('path'), arg('source', z.enum(['working', 'branch']))),
   'usage:overview': args(),
   'usage:stats': args(looseFlag('refresh')),

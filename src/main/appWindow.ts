@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, Menu, nativeTheme, shell } from 'electron'
+import { syncWindowControls } from './windowControls'
 
 /** 窗口的隐藏、唤回和应用退出由同一个所有者控制；渲染层不管理进程生命周期。 */
 export class AppWindow {
@@ -57,6 +58,7 @@ export class AppWindow {
       webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
     })
     if (process.platform === 'win32') {
+      syncWindowControls(win)
       // Keep native caption glyphs and hover backgrounds out of the splash.
       // Disabling the window briefly prevents invisible caption hit targets.
       win.setEnabled(false)

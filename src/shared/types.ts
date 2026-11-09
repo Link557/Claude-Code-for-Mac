@@ -33,6 +33,8 @@ export interface ModelOption {
 }
 
 export interface Settings {
+  /** Completed the local welcome flow; never written to CLI configuration. */
+  welcomeCompleted?: boolean
   /** Local display preference, independent of CLI authentication and provider. */
   displayName?: string | null
   /** Desktop process retention only; never written to Claude Code settings. */
@@ -106,7 +108,7 @@ export interface PlanUsage {
 
 /** 开发截图用：指定启动时的界面状态 */
 export interface DemoState {
-  route?: 'new' | 'settings'
+  route?: 'new' | 'settings' | 'welcome'
   dialog?: 'add-project' | 'import'
   dialogPath?: string
   openMenu?: 'project' | 'model' | 'effort' | 'permission' | 'project-picker'

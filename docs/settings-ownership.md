@@ -24,3 +24,11 @@
 本项目 `src/main/claudeConfigProtocol.ts` 对 SDK 0.3.301 的非公开 `get_settings` 控制协议做适配，读取 effective/sources；它是版本敏感的实现细节，不应视为长期稳定的公开 API。桌面会话选择的模型可能经 CLI 别名映射至其他 ID，识别到映射不证明网关实际后端或调用权限。
 
 第三方服务是否支持输入建议、模型别名、思考程度、用量或对应 API，应根据 CLI 返回、供应商协议和实际请求结果判定；不要只按有无官方套餐判定，也不要因第三方接入一律关闭桌面本地功能。官方文档记录了 [第三方部署和网关](https://code.claude.com/docs/en/third-party-integrations) 与 [输入建议触发限制](https://code.claude.com/docs/en/interactive-mode#prompt-suggestions)。
+
+## 2.1.299 默认值显示修复（win.12）
+
+截图中的未知值可由 `.local/probe-config-snapshot.cjs` 对真实本机 CLI 2.1.299 稳定复现。根因是 `claudeConfigValues.ts` 原先仅允许 2.1.301 的默认值适配；get_settings 返回的合并配置不包含所有未显式设置项，因此本机版本被统一降为 unknown。
+
+核查原生 2.1.299 可执行文件中的 /config 描述、全局默认对象和相关设置读取逻辑后，仅对已审核的可见项增加版本适配：autoCompact、language、outputStyle、useAutoModeDuringPlan、workflowKeywordTriggerEnabled、worktreeBaseRef、workflowSizeGuideline、switchModelsOnFlag。用户/项目显式值、环境和托管来源仍优先；未知版本、未审核字段继续保持未知，不扩展成任意版本通用默认。工作流规模与安全切换仍按已核实的账号/功能开关规则处理。
+
+界面将 source=default 标为“引擎默认 · 未单独设置”；真正未知的项显示当前 CLI 版本及未提供生效值的说明。这是版本适配所得默认值，不宣称 API 直接返回了这些默认值。29 项相关测试、类型检查、原始真实 IPC 复现脚本及两个设置页的实际 UI 核对通过；未发送模型消息或修改 CLI 用户配置。

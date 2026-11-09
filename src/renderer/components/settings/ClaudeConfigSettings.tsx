@@ -36,7 +36,7 @@ export function ClaudeConfigSettings({ cwd, keys, excludeKeys, searchable = true
         const disabled = !!saving || reloading || !!item.locked
         const label = CONFIG_LABELS[item.key] ?? item.key
         return <div key={item.key}>
-          <Row label={<label htmlFor={`config-${item.key}`}>{label}</label>} hint={item.locked}>
+          <Row label={<label htmlFor={`config-${item.key}`}>{label}</label>} hint={item.locked ?? (item.source === 'default' ? '引擎默认 · 未单独设置' : item.source === 'unknown' ? `CLI ${snapshot.cliVersion || '版本未知'} 未提供可确认的生效值` : undefined)}>
             {item.key === 'language' ? <ReplyLanguagePicker key={`${cwd}:${item.value}`} id={`config-${item.key}`} value={item.value} disabled={disabled} onSave={value => void save(item.key, value)} />
             : boolean ? <Toggle id={`config-${item.key}`} label={label} value={item.value === 'true'} disabled={disabled} title={item.locked} onChange={value => void save(item.key, String(value))} />
             : item.values.length ? <select id={`config-${item.key}`} disabled={disabled} value={item.value ?? ''} title={item.locked} onChange={e => void save(item.key, e.target.value)} className={settingsInputClass}>

@@ -83,6 +83,7 @@ export function SettingsPage() {
     {(tab === 'general' || tab === 'connection') && <Section title="个人展示"><Row label="显示名称"><DisplayNameEditor compact /></Row></Section>}
     {tab === 'connection' && <ConnectionSettings cwd={cwd} />}
     {tab === 'general' && <Section title="界面与交互">
+      <Row label="欢迎与个性化" hint="重新选择外观、新对话模型和思考程度。"><button className={settingsButtonClass} onClick={() => useDesk.getState().setWelcomeOpen(true)}>打开欢迎页</button></Row>
       <Row label="主题"><Segmented options={THEMES} value={settings.theme} onChange={theme => saveSettings({ theme })} /></Row>
       <Row label="自动跟随最新回复"><Toggle label="自动跟随最新回复" value={settings.autoScroll ?? true} onChange={autoScroll => saveSettings({ autoScroll })} /></Row>
       <Row label="减少动效"><Toggle label="减少动效" value={settings.reduceMotion ?? false} onChange={reduceMotion => saveSettings({ reduceMotion })} /></Row>
