@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
@@ -32,6 +32,35 @@ it('includes nested manifest skill directories and deduplicates default entries'
   const catalog = await readSkillCatalog(null)
   expect(catalog.skills.map(s => s.name)).toEqual(['kit:direct', 'kit:tdd'])
   expect(await readSkillBody(catalog.skills[1].path)).toBe('Body')
+})
+
+it.each(['./categories/engineering', ['./categories/engineering', './categories/engineering/tdd', './categories/engineering']])('reads declared containers without counting their skills as separate plugins', async declaration => {
+  const install = join(config, 'plugins', 'kit')
+  write(join(install, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'kit', skills: declaration }))
+  write(join(install, 'categories/engineering/tdd/SKILL.md'), '# TDD\nTest first')
+  write(join(install, 'categories/engineering/review/SKILL.md'), '# Review\nReview changes')
+  write(join(install, 'unlisted/deep/hidden/SKILL.md'), '# Hidden')
+  write(join(install, 'commands/ship.md'), '# Ship\nShip it')
+  write(join(config, 'plugins/installed_plugins.json'), JSON.stringify({ plugins: { 'kit@m': [{ scope: 'user', installPath: install }] } }))
+  const catalog = await readSkillCatalog(null)
+  expect(catalog.plugins).toHaveLength(1)
+  expect(catalog.skills.map(s => s.name)).toEqual(['kit:review', 'kit:ship', 'kit:tdd'])
+  expect(catalog.skills.find(s => s.name === 'kit:ship')?.kind).toBe('command')
+})
+
+it('rejects declarations and symlinks outside the plugin and deduplicates paths inside it', async () => {
+  const install = join(config, 'plugins', 'kit'), outside = join(config, 'plugins', 'kit-other')
+  write(join(outside, 'SKILL.md'), '# Outside')
+  write(join(install, 'skills/direct/SKILL.md'), '# Direct')
+  symlinkSync(outside, join(install, 'escape'), process.platform === 'win32' ? 'junction' : 'dir')
+  symlinkSync(outside, join(install, 'skills/escape'), process.platform === 'win32' ? 'junction' : 'dir')
+  symlinkSync(join(install, 'skills/direct'), join(install, 'alias'), process.platform === 'win32' ? 'junction' : 'dir')
+  write(join(install, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'kit', skills: ['../kit-other', outside, './escape', './alias', './skills/direct', 123] }))
+  write(join(config, 'plugins/installed_plugins.json'), JSON.stringify({ plugins: { 'kit@m': [{ scope: 'user', installPath: install }] } }))
+  const catalog = await readSkillCatalog(null)
+  expect(catalog.skills).toHaveLength(1)
+  expect(await readSkillBody(catalog.skills[0].path)).toBe('# Direct')
+  await expect(readSkillBody(join(outside, 'SKILL.md'))).rejects.toThrow('只能读取')
 })
 
 it('collects user, project, synced and plugin skills with plugin enablement', async () => {

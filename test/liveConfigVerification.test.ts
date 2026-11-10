@@ -6,7 +6,7 @@ const sdk = vi.hoisted(() => ({ query: vi.fn(), allowBypass: false, promptSugges
 vi.mock('../src/main/sdk', () => ({ loadSdk: async () => sdk, claudeExecutable: () => undefined }))
 vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: sdk.allowBypass, promptSuggestions: sdk.promptSuggestions } }) }))
 let session: LiveSession | undefined
-afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false; sdk.promptSuggestions = undefined })
+afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false; sdk.promptSuggestions = undefined; vi.useRealTimers() })
 function setup() {
   let fast = false
   let blocked = false
@@ -101,5 +101,16 @@ it('ignores suggestions for another session or after a failed result', async () 
   query.push({ type: 'result', subtype: 'success', is_error: true, result: 'error', duration_ms: 1, uuid: 'r2' })
   query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 's2', suggestion: 'wrong' })
   await vi.waitFor(() => expect(events).toHaveBeenCalledWith(expect.objectContaining({ kind: 'result', resultId: 'r2' })))
+  expect(session!.promptSuggestion).toBeNull()
+})
+it('expires a suggestion after five minutes', async () => {
+  vi.useFakeTimers()
+  const { query } = setup()
+  await session!.start()
+  query.push({ type: 'result', subtype: 'success', is_error: false, duration_ms: 1, uuid: 'r' })
+  query.push({ type: 'prompt_suggestion', session_id: 'test', uuid: 's', suggestion: 'check' })
+  await vi.advanceTimersByTimeAsync(10)
+  expect(session!.promptSuggestion?.text).toBe('check')
+  await vi.advanceTimersByTimeAsync(300000)
   expect(session!.promptSuggestion).toBeNull()
 })

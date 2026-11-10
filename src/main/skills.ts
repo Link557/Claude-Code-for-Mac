@@ -1,4 +1,4 @@
-import { readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { readdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
@@ -49,9 +49,18 @@ async function readJson(path: string): Promise<any> {
 }
 
 /** skills/<name>/SKILL.md */
-async function scanSkills(root: string, source: SkillSource, prefix = '', plugin?: string): Promise<SkillInfo[]> {
+async function containedPath(path: string, root: string): Promise<string | null> {
+  try {
+    const actual = await realpath(path)
+    return actual === root || actual.startsWith(root + sep) ? actual : null
+  } catch { return null }
+}
+
+async function scanSkills(root: string, source: SkillSource, prefix = '', plugin?: string, boundary?: string): Promise<SkillInfo[]> {
   const found = await Promise.all((await directories(root)).map(async (dir): Promise<SkillInfo | null> => {
-    const path = join(dir, 'SKILL.md'), text = await readText(path)
+    const path = boundary ? await containedPath(join(dir, 'SKILL.md'), boundary) : join(dir, 'SKILL.md')
+    if (!path) return null
+    const text = await readText(path)
     if (text === null) return null
     const fields = parseFrontmatter(text)
     return { name: prefix + (fields.name || basename(dir)), description: describe(text, fields), kind: 'skill', source, path, plugin }
@@ -99,15 +108,17 @@ async function scanPlugins(cwd: string | null): Promise<{ plugins: PluginInfo[];
       enabled: enabled.merged[id] === true, projectOverride: enabled.project.has(id)
     }
     const declared = typeof manifest.skills === 'string' ? [manifest.skills] : Array.isArray(manifest.skills) ? manifest.skills.filter((p: unknown): p is string => typeof p === 'string') : []
+    const boundary = await realpath(root).catch(() => null)
     const customSkills = await Promise.all(declared.map(async (relative: string): Promise<SkillInfo[]> => {
       const directory = resolve(root, relative)
-      if (!directory.startsWith(resolve(root) + sep)) return []
-      const path = join(directory, 'SKILL.md'), text = await readText(path)
-      if (text === null) return scanSkills(directory, 'plugin', prefix, id)
+      if (!boundary || (directory !== resolve(root) && !directory.startsWith(resolve(root) + sep)) || !await containedPath(directory, boundary)) return []
+      const path = await containedPath(join(directory, 'SKILL.md'), boundary)
+      const text = path ? await readText(path) : null
+      if (text === null || !path) return scanSkills(directory, 'plugin', prefix, id, boundary)
       const fields = parseFrontmatter(text)
       return [{ name: prefix + (fields.name || basename(directory)), description: describe(text, fields), kind: 'skill', source: 'plugin', path, plugin: id }]
     }))
-    const [defaults, commands] = await Promise.all([scanSkills(join(root, 'skills'), 'plugin', prefix, id), scanCommands(join(root, 'commands'), 'plugin', prefix, id)])
+    const [defaults, commands] = await Promise.all([boundary ? scanSkills(join(root, 'skills'), 'plugin', prefix, id, boundary) : [], scanCommands(join(root, 'commands'), 'plugin', prefix, id)])
     const skills = [...new Map([...defaults, ...customSkills.flat()].map(skill => [skill.path, skill])).values()]
     return { plugin, skills: [...skills, ...commands] }
   }))

@@ -7,6 +7,7 @@ import { withIdleQuery } from './sdk'
 import { resolveConfigValues } from './claudeConfigValues'
 import { withClaudeConfig } from './claudeConfigAccess'
 import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
+import { providerRoute } from './providerRoute'
 import type { ClaudeConfigSnapshot } from '../shared/claudeConfig'
 
 export function readClaudeConfig(cwd: string): Promise<ClaudeConfigSnapshot> {
@@ -19,7 +20,8 @@ async function readSnapshot(cwd: string): Promise<ClaudeConfigSnapshot> {
     withIdleQuery({ cwd, settingSources: ['user', 'project', 'local'] }, async q => {
       const init = await q.initializationResult()
       const state = await readConfigState(q)
-      return { ...state, version: init.claude_code_version ?? '', subscription: init.account?.subscriptionType }
+      const env = { ...process.env, ...(isConfigRecord(state.effective.env) ? state.effective.env : {}) }
+      return { ...state, version: init.claude_code_version ?? '', subscription: providerRoute(init.account ?? {}, env) === 'firstParty' ? init.account?.subscriptionType : undefined }
     })
   ])
   const parsed = parseCommandOutput('config', text)

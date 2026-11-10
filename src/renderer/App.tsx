@@ -135,7 +135,7 @@ export function App() {
         {!sidebarCollapsed && <ResizeHandle side="left" width={leftWidth} defaultWidth={LEFT.default} onResize={setLeftWidth} />}
       </div>
       <div data-workspace-shell className={`relative flex min-w-0 flex-1 ${windows ? 'overflow-hidden rounded-2xl border border-line bg-bg' : ''}`}>
-      <main data-first-send-target={view.kind === 'session' && isFirstSendTarget(view.sessionId) ? '' : undefined} inert={rightOpen && expanded && view.kind === 'session'} className={`flex min-w-0 flex-1 flex-col bg-bg ${rightOpen && expanded ? 'overflow-hidden' : ''} ${windows && view.kind !== 'session' ? 'pt-3' : ''}`}>
+      <main data-first-send-target={view.kind === 'session' && isFirstSendTarget(view.sessionId) ? '' : undefined} inert={rightOpen && expanded && view.kind === 'session'} className={`flex min-w-0 flex-1 flex-col bg-bg ${view.kind === 'session' ? 'chat-workspace' : ''} ${rightOpen && expanded ? 'overflow-hidden' : ''} ${windows && view.kind !== 'session' ? 'pt-3' : ''}`}>
         {(!windows || view.kind === 'session') && <div className={`drag relative z-40 flex shrink-0 items-center gap-1 ${view.kind === 'session' ? 'chat-titlebar' : 'h-[52px]'} ${windows ? 'pl-5' : 'pl-[96px]'}`}>
           {!windows && sidebarCollapsed && (
             <div className="no-drag animate-fade-in flex gap-1.5">
@@ -160,7 +160,7 @@ export function App() {
             </div>
           )}
         </div>}
-        {actionError && <div role="alert" className="flex items-center justify-between bg-danger/10 px-4 py-2 text-sm text-danger"><span>{actionError}</span><button type="button" onClick={clearActionError}>关闭</button></div>}
+        {actionError && <div role="alert" className="workspace-action-error flex items-center justify-between bg-danger/10 px-4 py-2 text-sm text-danger"><span>{actionError}</span><button type="button" onClick={clearActionError}>关闭</button></div>}
         {view.kind === 'new' && <NewSessionPage />}
         {view.kind === 'settings' && <SettingsPage />}
         {view.kind === 'usage' && <UsagePage />}

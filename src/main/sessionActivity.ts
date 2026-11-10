@@ -1,7 +1,6 @@
 // SDK 活动适配层：只保存摘要所需的事实，不复制完整工具参数和返回正文。
 import { diffLines } from 'diff'
 import { basename, resolve } from 'node:path'
-import { agentResultFooter } from '../shared/agentResult'
 import type { ActivityStatus, SessionSummaryData, SummaryItem } from '../shared/sessionSummary'
 import { TaskTracker, type TrackedTask } from './taskTracker'
 
@@ -109,7 +108,7 @@ export class SessionActivity {
           try { output = obj(JSON.parse(text(block.content))) } catch { /* 非结构化结果只使用可确认的信息 */ }
         }
         const agentOutput = singleResult ? obj(message.tool_use_result) : {}
-        this.agentIdentity(tool.id, agentOutput, text(block.content))
+        if (block.is_error !== true) this.agentIdentity(tool.id, agentOutput)
         if (!tool.resultSeen) this.result(tool, output, text(block.content), block.is_error === true, agentOutput)
       }
     }
@@ -142,13 +141,13 @@ export class SessionActivity {
     if (name === 'Agent' || name === 'Task') this.agents.set(id, { status: 'running', ...this.agents.get(id), appearanceIndex: this.agents.get(id)?.appearanceIndex ?? this.nextAgentIndex++, id, title: short(input.description) || str(input.subagent_type) || '子 Agent', description: str(input.subagent_type) || '类型未知' })
     this.changed()
   }
-  private agentIdentity(toolId: string, output: Json, resultText: string): void {
+  private agentIdentity(toolId: string, output: Json): void {
     const agent = this.agents.get(toolId)
-    if (!agent) return
     const structured = str(output.agentId)
-    const agentId = structured || (!agent.agentIdVerified ? agentResultFooter(resultText)?.agentId : '')
-    if (agentId && (agentId !== agent.agentId || Boolean(structured) !== Boolean(agent.agentIdVerified))) {
-      agent.agentId = agentId; agent.agentIdVerified = Boolean(structured); this.changed()
+    if (agent && structured && (structured !== agent.agentId || !agent.agentIdVerified)) {
+      agent.agentId = structured
+      agent.agentIdVerified = true
+      this.changed()
     }
   }
   private result(tool: ToolFact, output: Json, resultText: string, failed: boolean, agentOutput: Json): void {

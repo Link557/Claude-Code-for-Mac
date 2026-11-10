@@ -23,7 +23,7 @@ export function AgentConversationPane({ sessionId, projectId, agentId, active }:
   const [failure, setFailure] = useState<{ key: string; text: string }>()
   const [loading, setLoading] = useState(false)
   const [retry, setRetry] = useState(0)
-  const key = JSON.stringify([sessionId, agentId])
+  const key = JSON.stringify([sessionId, agentId, chat?.sync?.snapshotRevision])
   const running = agent?.status === 'running'
   const scroll = useRef<HTMLDivElement>(null)
   const follow = useRef(true)
@@ -46,7 +46,7 @@ export function AgentConversationPane({ sessionId, projectId, agentId, active }:
     void read()
     const timer = running ? setInterval(() => { void read() }, 2000) : undefined
     return () => { stale = true; if (timer) clearInterval(timer) }
-  }, [sessionId, project?.path, agent?.id, agent?.agentId, agent?.status, active, retry])
+  }, [sessionId, project?.path, agent?.id, agent?.agentId, agent?.status, active, retry, key])
 
   const messages = agentMessages(record?.key === key ? record.messages : NO_MESSAGES, chat?.messages ?? NO_MESSAGES, agentId ?? '', running)
   const replies = messages.filter(message => message.role === 'assistant' && message.blocks.some(block => block.kind !== 'thinking'))
@@ -91,7 +91,7 @@ export function AgentConversationPane({ sessionId, projectId, agentId, active }:
           <Markdown text={resultText || '（无输出）'} />
         </div>}
         {(prompt || extraResult || context.length > 0) && <details className="mt-5">
-          <summary className="w-fit cursor-pointer rounded text-sm text-fg2 hover:text-fg">{context.length ? '会话详情' : prompt && extraResult ? '任务与返回结果' : prompt ? '任务说明' : '返回结果'}</summary>
+          <summary className="w-fit cursor-pointer rounded text-sm text-fg2 hover:text-fg">会话详情</summary>
           {prompt && <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{prompt}</div>}
           {context.map(message => <div key={message.id} className="mt-3">
             {renderBlocks(message.role === 'assistant' ? message.blocks.filter(block => block.kind === 'thinking') : message.blocks)}

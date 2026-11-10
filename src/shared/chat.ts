@@ -10,7 +10,7 @@ export type UiBlock =
       id: string
       name: string
       input: Record<string, unknown>
-      result?: { text: string; isError: boolean }
+      result?: { text: string; isError: boolean; images?: string[] }
     }
   /** 本地斜杠命令（/context、/model…）的输出；output 为 null 表示会话记录里没保存输出 */
   | { kind: 'command'; name: string; args: string; output: string | null }

@@ -80,7 +80,11 @@ export class TaskTracker {
     if (previous?.run_id && run && run < previous.run_id) return
     const newRun = Boolean(run && previous?.run_id !== run)
     if (!newRun && previous && terminal(previous.status) && source !== 'task_notification') {
-      if (source !== 'level') return
+      if (source !== 'level') {
+        // A late start can supply the association missing from the completion event.
+        if (typeof patch.tool_use_id !== 'string' || previous.tool_use_id) return
+        patch = { ...patch, status: previous.status }
+      }
       // Levels can update metadata after a terminal edge, but cannot undo it.
       // An 'ended' membership fallback has no terminal evidence and may rejoin.
       if (previous.status !== 'ended') patch = { ...patch, status: previous.status }

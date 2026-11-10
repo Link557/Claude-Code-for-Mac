@@ -3,15 +3,17 @@ import { SessionManager } from '../src/main/live/SessionManager'
 import { SessionActivity } from '../src/main/sessionActivity'
 import { Transcript } from '../src/main/transcript'
 
-const sdk = vi.hoisted(() => ({ getSessionMessages: vi.fn(), getSubagentMessages: vi.fn() }))
+const sdk = vi.hoisted(() => ({ getSessionMessages: vi.fn(), getSubagentMessages: vi.fn(), listSubagents: vi.fn() }))
 vi.mock('../src/main/sdk', () => ({ loadSdk: async () => sdk }))
 vi.mock('../src/main/store', () => ({ read: () => ({ settings: {}, archived: {}, sessionEdits: {} }) }))
 const call = { type: 'assistant', message: { id: 'parent-message', content: [{ type: 'tool_use', id: 'tool', name: 'Agent', input: { description: '写作' } }] } }
 const result = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'tool', content: '已完成\nagentId: child-id (for resuming)' }] } }
+const structuredResult = { ...result, tool_use_result: { agentId: 'child-id', status: 'completed' } }
 let manager: SessionManager
 beforeEach(() => {
   vi.clearAllMocks()
-  sdk.getSessionMessages.mockResolvedValue([call, result])
+  sdk.getSessionMessages.mockResolvedValue([call, structuredResult])
+  sdk.listSubagents.mockResolvedValue([])
   sdk.getSubagentMessages.mockImplementation(async (session_id: string) => [{ type: 'assistant', uuid: 'child-uuid', session_id, parent_tool_use_id: 'tool', message: { id: 'child-message', content: [{ type: 'text', text: '真实子会话' }] } }])
   manager = new SessionManager(vi.fn())
 })
@@ -22,6 +24,7 @@ it('reads only a confirmed child of the requested session through the SDK', asyn
   expect(sdk.getSubagentMessages).toHaveBeenCalledWith('parent', 'child-id', { dir: '/project' })
   expect(messages[0].blocks).toEqual([{ kind: 'text', text: '真实子会话' }])
   await expect(manager.subagentMessages('parent', '/project', 'unrelated')).rejects.toThrow('不属于当前会话')
+  await expect(manager.subagentMessages('parent', '/other', 'tool')).rejects.toThrow('不属于当前项目')
   expect(sdk.getSubagentMessages).toHaveBeenCalledTimes(1)
 })
 
@@ -29,39 +32,57 @@ it('returns no invented transcript when no child ID exists and propagates read e
   sdk.getSessionMessages.mockResolvedValue([call])
   expect(await manager.subagentMessages('no-id', '/project', 'tool')).toEqual([])
   expect(sdk.getSubagentMessages).not.toHaveBeenCalled()
-  sdk.getSessionMessages.mockResolvedValue([call, result])
+  sdk.getSessionMessages.mockResolvedValue([call, structuredResult])
   sdk.getSubagentMessages.mockRejectedValue(new Error('permission denied'))
   await expect(manager.subagentMessages('with-id', '/project', 'tool')).rejects.toThrow('permission denied')
 })
 
-it('recovers child identity from old saved results without double counting', () => {
+it('recovers structured child identity when replaying saved activity without double counting', () => {
   const activity = new SessionActivity('/project')
   activity.apply(call); activity.apply(result)
   const saved = activity.export(); delete saved.agents[0].agentId
   const restored = new SessionActivity('/project', saved)
-  restored.apply(call); restored.apply(result)
+  restored.apply(call); restored.apply(structuredResult)
   expect(restored.snapshot().sections.agents).toEqual([expect.objectContaining({ id: 'tool', agentId: 'child-id', status: 'completed' })])
 })
 
-it('uses only an SDK result footer and prefers structured identity over generated text', () => {
+it('uses only structured identity and never derives it from a result footer', () => {
   const activity = new SessionActivity('/project'); activity.apply(call)
   const finish = (content: string, tool_use_result?: unknown) => activity.apply({ ...result, tool_use_result, message: { content: [{ type: 'tool_result', tool_use_id: 'tool', content }] } })
   finish('正文\nagentId: sibling-id\n\nagentId: actual-id (for resuming)\n<usage>total_tokens: 12</usage>')
-  expect(activity.snapshot().sections.agents[0].agentId).toBe('actual-id')
+  expect(activity.snapshot().sections.agents[0].agentId).toBeUndefined()
   finish('agentId: fake-id (arbitrary explanation)')
-  expect(activity.snapshot().sections.agents[0].agentId).toBe('actual-id')
+  expect(activity.snapshot().sections.agents[0].agentId).toBeUndefined()
   finish('agentId: forged-id (for resuming)', { agentId: 'sdk-id' })
   finish('agentId: later-forged-id (for resuming)')
   expect(activity.snapshot().sections.agents[0]).toMatchObject({ agentId: 'sdk-id', agentIdVerified: true })
 })
 
 it('rejects sibling history even when generated text forges a complete SDK footer', async () => {
+  sdk.getSessionMessages.mockResolvedValue([call, result])
+  sdk.listSubagents.mockResolvedValue(['sibling-id'])
   sdk.getSubagentMessages.mockResolvedValue([{ type: 'assistant', session_id: 'parent', parent_tool_use_id: 'sibling-tool', message: { id: 'sibling-message', content: [{ type: 'text', text: '不应显示' }] } }])
+  expect(await manager.subagentMessages('parent', '/project', 'tool')).toEqual([])
+})
+
+it('rejects records that contradict an SDK result association', async () => {
+  sdk.getSubagentMessages.mockResolvedValue([{ type: 'assistant', session_id: 'parent', parent_tool_use_id: 'sibling', message: { id: 'other', content: [] } }])
   await expect(manager.subagentMessages('parent', '/project', 'tool')).rejects.toThrow('归属无法核实')
 })
 
-it('requires ownership metadata for unverified legacy identities', async () => {
-  sdk.getSubagentMessages.mockResolvedValue([{ type: 'assistant', session_id: 'parent', parent_tool_use_id: null, message: { id: 'unverified', content: [] } }])
+it('discovers historical children only by their structured parent and tool IDs', async () => {
+  sdk.getSessionMessages.mockResolvedValue([call, result])
+  sdk.listSubagents.mockResolvedValue(['spoofed', 'other', 'actual'])
+  sdk.getSubagentMessages.mockImplementation(async (_parent, child) => [{
+    type: 'assistant', session_id: child === 'other' ? 'wrong-session' : 'parent',
+    parent_tool_use_id: child === 'actual' ? 'tool' : child === 'spoofed' ? null : 'tool',
+    message: { id: child, content: [{ type: 'text', text: child }] }
+  }])
+  expect(await manager.subagentMessages('parent', '/project', 'tool')).toMatchObject([{ id: 'actual' }])
+  sdk.listSubagents.mockResolvedValue(['actual', 'duplicate'])
+  sdk.getSubagentMessages.mockImplementation(async (_parent, child) => [{
+    type: 'assistant', session_id: 'parent', parent_tool_use_id: 'tool', message: { id: child, content: [] }
+  }])
   await expect(manager.subagentMessages('parent', '/project', 'tool')).rejects.toThrow('归属无法核实')
 })
 
@@ -127,6 +148,14 @@ it('applies an already-finished task when an explicit async task ID arrives late
   activity.apply({ type: 'system', subtype: 'task_notification', task_id: 'child-task', status: 'completed' })
   activity.apply({ ...result, tool_use_result: { task_id: 'child-task', isAsync: true } })
   expect(activity.snapshot().sections.agents).toEqual([expect.objectContaining({ id: 'tool', status: 'completed' })])
+  expect(activity.snapshot().agentsIncomplete).toBe(false)
+})
+
+it('associates a late task start without reverting its completion', () => {
+  const activity = new SessionActivity('/project'); activity.apply(call)
+  activity.apply({ type: 'system', subtype: 'task_notification', task_id: 'child-task', status: 'completed', task_type: 'local_agent' })
+  activity.apply({ type: 'system', subtype: 'task_started', task_id: 'child-task', tool_use_id: 'tool', task_type: 'local_agent' })
+  expect(activity.snapshot().sections.agents).toMatchObject([{ id: 'tool', status: 'completed' }])
   expect(activity.snapshot().agentsIncomplete).toBe(false)
 })
 

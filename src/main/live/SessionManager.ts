@@ -2,6 +2,7 @@ import { parseDesktopCommand, assertChatPrompt, type DesktopCommand } from '../.
 import { runLocalCommand } from '../localCommand'
 import { changeRule } from '../permissionRules'
 import { access } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import * as store from '../store'
 import { historyIds, recordEdit } from '../sessions'
 import type { SessionPreferences, SessionPreferencesRepository } from '../sessionPreferences'
@@ -82,13 +83,42 @@ export class SessionManager {
 
   async subagentMessages(sessionId: string, projectPath: string, toolUseId: string) {
     const parent = await this.transcript(sessionId, projectPath)
+    if (!parent.projectPath || resolve(parent.projectPath) !== resolve(projectPath)) {
+      throw new Error('该会话不属于当前项目')
+    }
+    const historyId = this.historyId(sessionId)
     const agent = parent.activity.snapshot().sections.agents.find(item => item.id === toolUseId)
     if (!agent) throw new Error('该子 Agent 不属于当前会话')
-    if (!agent.agentId) return []
+    const verifiedId = agent.agentIdVerified ? agent.agentId : undefined
+    if (!verifiedId && agent.status === 'running' && this.live.has(sessionId)) return []
     const sdk = await loadSdk()
-    const messages = await sdk.getSubagentMessages(this.historyId(sessionId), agent.agentId, { dir: projectPath })
-    if (messages.some(message => message.session_id !== this.historyId(sessionId) || (message.parent_tool_use_id ? message.parent_tool_use_id !== toolUseId : !agent.agentIdVerified))) {
-      throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+    const dir = { dir: projectPath }
+    const read = (id: string) => sdk.getSubagentMessages(historyId, id, dir)
+    const belongs = (message: Awaited<ReturnType<typeof read>>[number], allowMissingTool: boolean) =>
+      message.session_id === historyId &&
+      (message.parent_tool_use_id === toolUseId || (allowMissingTool && !message.parent_tool_use_id))
+    let messages: Awaited<ReturnType<typeof read>> = []
+    if (verifiedId) {
+      messages = await read(verifiedId)
+      if (messages.some(message => !belongs(message, true))) {
+        throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+      }
+    } else {
+      // The SDK strips tool result metadata when loading the parent history.
+      // Recover the link from the SDK's structured child messages.
+      for (const id of new Set(await sdk.listSubagents(historyId, dir))) {
+        const candidate = await read(id)
+        if (!candidate.some(message => belongs(message, false))) continue
+        if (messages.length || candidate.some(message => !belongs(message, false))) {
+          throw new Error('子会话的父会话或工具归属无法核实，已阻止展示。')
+        }
+        messages = candidate
+      }
+    }
+    const current = parent.activity.snapshot().sections.agents.find(item => item.id === toolUseId)
+    if (this.transcripts.get(sessionId) !== parent || this.historyId(sessionId) !== historyId ||
+      !current || (current.agentIdVerified ? current.agentId : undefined) !== verifiedId) {
+      throw new Error('会话已更新，请重新读取子会话。')
     }
     const transcript = new Transcript(projectPath)
     // 文件已由 SDK 按父会话与 Agent ID 定位；其中的主链就是该子 Agent 的会话。
@@ -117,14 +147,30 @@ export class SessionManager {
     }
   }
 
-  start(projectPath: string, text: string, options: SessionOptions): string {
+  start(projectPath: string, text: string, options: SessionOptions): string
+  start(projectPath: string, text: string, options: SessionOptions, confirmStartup: true): Promise<string>
+  start(projectPath: string, text: string, options: SessionOptions, confirmStartup = false): string | Promise<string> {
     assertChatPrompt(text)
     const sessionId = randomUUID()
     const transcript = new Transcript(projectPath)
     this.transcripts.set(sessionId, transcript)
     this.updatePrefs(sessionId, p => { p.options = options })
-    this.spawn(sessionId, projectPath, false, options, transcript).send(text)
-    return sessionId
+    const live = this.spawn(sessionId, projectPath, false, options, transcript)
+    if (confirmStartup && options.mode === 'auto') {
+      return this.live.use(sessionId, async () => {
+        try {
+          await live.readyForControls()
+          live.send(text)
+          return sessionId
+        } catch (error) {
+          live.close()
+          this.transcripts.delete(sessionId)
+          throw error
+        }
+      })
+    }
+    live.send(text)
+    return confirmStartup ? Promise.resolve(sessionId) : sessionId
   }
 
   /** 正在回复、等待确认或仍有后台任务在跑 */
@@ -160,13 +206,20 @@ export class SessionManager {
       const options = this.options(sessionId)
       const historyId = randomUUID()
       const submission = { uuid: randomUUID(), text, time: Date.now() }
-      this.submissionStore?.save(historyId, [...transcript.humanSubmissions(), submission])
-      recordEdit(sessionId, historyId)
       this.closeSession(sessionId)
-      if (this.prefs(sessionId).queue.items.length && !this.prefs(sessionId).queue.paused) this.pauseQueue(sessionId)
       this.activeHistoryIds.set(sessionId, historyId)
-      this.transcripts.set(sessionId, transcript)
       const replacement = this.spawn(sessionId, projectPath, false, options, transcript, at === null ? undefined : { from: sourceId, at })
+      try {
+        if (options.mode === 'auto') await replacement.readyForControls()
+        this.submissionStore?.save(historyId, [...transcript.humanSubmissions(), submission])
+        recordEdit(sessionId, historyId)
+      } catch (error) {
+        replacement.close()
+        this.activeHistoryIds.set(sessionId, sourceId)
+        throw error
+      }
+      if (this.prefs(sessionId).queue.items.length && !this.prefs(sessionId).queue.paused) this.pauseQueue(sessionId)
+      this.transcripts.set(sessionId, transcript)
       this.publish(sessionId, { kind: 'replaceHistory', snapshot: this.snapshot(sessionId, transcript) })
       replacement.send(text, submission.uuid)
     })
@@ -707,11 +760,13 @@ export class SessionManager {
    */
   private recycle(reserve = 0): void {
     const settings = store.read().settings
-    const excess = this.live.size + reserve - (settings.retainedSessions ?? 4)
+    const retained = Number.isInteger(settings.retainedSessions) && settings.retainedSessions! >= 1 && settings.retainedSessions! <= 16 ? settings.retainedSessions! : 4
+    const minutes = Number.isInteger(settings.sessionIdleMinutes) && settings.sessionIdleMinutes! >= 1 && settings.sessionIdleMinutes! <= 120 ? settings.sessionIdleMinutes! : 15
+    const excess = this.live.size + reserve - retained
     if (excess <= 0) return
     const now = Date.now()
     const stale = this.live.idle()
-      .filter(([, s]) => now - s.lastActive > (settings.sessionIdleMinutes ?? 15) * 60_000)
+      .filter(([, s]) => now - s.lastActive > minutes * 60_000)
       .sort((a, b) => a[1].lastActive - b[1].lastActive)
     for (const [id] of stale.slice(0, excess)) this.closeSession(id)
   }

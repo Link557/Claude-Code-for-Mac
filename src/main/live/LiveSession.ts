@@ -61,8 +61,10 @@ export class LiveSession {
   private publishedTasks = '[]'
   runtime: RuntimeSettings = {}
   promptSuggestion: PromptSuggestion | null = null
+  private suggestionTimer?: ReturnType<typeof setTimeout>
   private acceptsSuggestion = false
   private clearSuggestion(): void {
+    clearTimeout(this.suggestionTimer)
     this.acceptsSuggestion = false
     if (!this.promptSuggestion) return
     this.promptSuggestion = null
@@ -73,9 +75,11 @@ export class LiveSession {
   private pending = new Map<string, Pending>()
   private input = new PushQueue<SDKUserMessage>()
   private releaseInput!: () => void
+  private startupError: Error | undefined
   private configured = new Promise<void>(resolve => { this.releaseInput = resolve })
   private async *configuredInput() {
     await this.configured
+    if (this.closed) return
     yield* this.input
   }
   private abort = new AbortController()
@@ -154,8 +158,7 @@ export class LiveSession {
         await this.q.applyFlagSettings({ effortLevel: null, ...(ultracode !== undefined ? { ultracode } : {}) })
         await this.refreshRuntime(false)
       }
-      // CLI 2.1.299 may start in default despite the launch option. Wait for the
-      // engine to acknowledge auto before any user input can reach it.
+      // The launch option alone does not confirm auto. Apply it before opening the input stream.
       if (options.mode === 'auto') {
         try { await this.setMode('auto') }
         catch (error) { throw new Error(`未能启用自动权限：${error instanceof Error ? error.message : String(error)}`) }
@@ -167,12 +170,17 @@ export class LiveSession {
       }).catch(() => {})
       void this.pump(this.q)
     } catch (err) {
+      this.startupError = err instanceof Error ? err : new Error(String(err))
       this.onStartFailed(err)
       if (!this.closed) this.fail(err, '无法启动 Claude')
     }
   }
 
-  async readyForControls(): Promise<void> { await this.configured; await this.query() }
+  async readyForControls(): Promise<void> {
+    await this.configured
+    if (this.startupError) throw this.startupError
+    await this.query()
+  }
 
   get cwd(): string { return this.init.cwd }
 
@@ -431,6 +439,7 @@ export class LiveSession {
   }
 
   private fail(error: unknown, prefix = '会话出错'): void {
+    this.clearSuggestion()
     this.init.emit({ kind: 'notice', text: `${prefix}：${error instanceof Error ? error.message : String(error)}` })
     this.setState('error')
     this.close()
@@ -499,11 +508,13 @@ export class LiveSession {
         this.acceptsSuggestion = false
         this.promptSuggestion = { id: m.uuid, text: m.suggestion.trim() }
         this.init.emit({ kind: 'promptSuggestion', suggestion: this.promptSuggestion })
+        this.suggestionTimer = setTimeout(() => this.clearSuggestion(), 5 * 60_000)
+        this.suggestionTimer.unref?.()
       }
       return
     }
     if (m.type === 'system' && m.subtype === 'commands_changed') { this.commandsChanged = true; this.publishCommands(m.commands) }
-    if (m.type === 'system' && (m.subtype === 'init' || m.subtype === 'status') && m.permissionMode && m.permissionMode !== this.runtime.permissionMode) {
+    if (m.type === 'system' && (m.subtype === 'init' || m.subtype === 'status') && m.session_id === this.init.sessionId && m.permissionMode && m.permissionMode !== this.runtime.permissionMode) {
       this.runtime = { ...this.runtime, permissionMode: m.permissionMode }
       this.init.emit({ kind: 'runtime', runtime: this.runtime })
     }

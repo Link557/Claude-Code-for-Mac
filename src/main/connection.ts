@@ -1,9 +1,12 @@
 import { execFile, spawn } from 'node:child_process'
 import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { clipboard, dialog, shell } from 'electron'
 import type { ConnectionStatus } from '../shared/connection'
-import { claudeRuntime } from './sdk'
+import { claudeRuntime, withIdleQuery } from './sdk'
+import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
+import { providerRoute } from './providerRoute'
 import { terminalCommand } from './nativeRuntime'
 import { proxyEnvironment, readSystemProxy } from './systemProxy'
 import { adoptLoginShellEnv } from './env'
@@ -42,6 +45,13 @@ export async function connectionStatus(cwd = homedir()): Promise<ConnectionStatu
       stdout = failure.stdout
     }
     Object.assign(result, parseAuthentication(stdout))
+    result.configDirectory ??= process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+    result.provider = null
+    result.provider = await withIdleQuery({ cwd, tools: [], mcpServers: {}, strictMcpConfig: true, settings: { disableAllHooks: true } }, async query => {
+      const account = await query.accountInfo()
+      const config = await readConfigState(query)
+      return providerRoute(account, { ...env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) })
+    })
   } catch (error) {
     // execFile errors include command output. Never forward that to the renderer.
     result.error = error instanceof Error && !('cmd' in error) && !(error instanceof SyntaxError)

@@ -33,24 +33,6 @@ async function start() {
   const first = (await input.next()).value
   return { id, query, input, first }
 }
-it('confirms automatic permission mode with the engine before releasing the first input', async () => {
-  const id = manager.start('/tmp', 'first', { ...options, mode: 'auto' })
-  await manager.prepareControls(id, '/tmp')
-  const { prompt, options: initial } = sdk.query.mock.calls[0][0]
-  expect(initial).toMatchObject({ model: 'opus', permissionMode: 'auto' })
-  expect(sdk.query.mock.results[0].value.setPermissionMode).toHaveBeenCalledWith('auto')
-  expect((await prompt[Symbol.asyncIterator]().next()).value.message.content).toBe('first')
-})
-it('shows an engine permission fallback and allows reselecting the same requested mode', async () => {
-  const id = manager.start('/tmp', 'first', { ...options, mode: 'auto' })
-  await manager.prepareControls(id, '/tmp')
-  const query = sdk.query.mock.results[0].value
-  query.push({ type: 'system', subtype: 'status', status: null, permissionMode: 'default' })
-  await vi.waitFor(async () => expect((await manager.open(id, '/tmp')).runtime?.permissionMode).toBe('default'))
-  await manager.setMode(id, 'auto')
-  expect(query.setPermissionMode).toHaveBeenCalledTimes(2)
-  expect((await manager.open(id, '/tmp')).runtime?.permissionMode).toBe('auto')
-})
 it('recognizes bare fast as a panel and rejects malformed controls instead of forwarding', () => {
   expect(parseDesktopCommand('/fast')).toEqual({ kind: 'panel', panel: 'fast' })
   for (const command of ['/fast invalid', '/effort invalid', '/model one two', '/config invalid']) expect(() => parseDesktopCommand(command)).toThrow()
@@ -96,4 +78,68 @@ it('keeps failed config saves and attached controls out of chat', async () => {
   await expect(manager.send(id, '/tmp', '/fast', options)).rejects.toThrow('设置面板')
   expect((await manager.open(id, '/tmp')).messages).toHaveLength(1)
   expect((await manager.open(id, '/tmp')).queue!.items).toHaveLength(0)
+})
+
+it('waits for auto before submitting the first prompt and lets users retry after fallback', async () => {
+  let acknowledge!: () => void
+  const createQuery = sdk.query.getMockImplementation()!
+  sdk.query.mockImplementationOnce(params => {
+    const query = createQuery(params)
+    query.setPermissionMode.mockImplementationOnce(() => new Promise<void>(resolve => { acknowledge = resolve }))
+    return query
+  })
+  const starting = manager.start('/tmp', 'first', { ...options, mode: 'auto' }, true)
+  await vi.waitFor(() => expect(acknowledge).toBeTypeOf('function'))
+  const { prompt, options: initial } = sdk.query.mock.calls[0][0]
+  const input = prompt[Symbol.asyncIterator]()
+  const received = vi.fn()
+  const first = input.next().then(received)
+  await Promise.resolve()
+  expect(received).not.toHaveBeenCalled()
+  acknowledge()
+  const id = await starting
+  await first
+  expect(received).toHaveBeenCalledWith(expect.objectContaining({ value: expect.objectContaining({ message: { role: 'user', content: 'first' } }) }))
+  const query = sdk.query.mock.results[0].value
+  query.push({ type: 'system', subtype: 'status', session_id: 'other', permissionMode: 'default' })
+  query.push({ type: 'system', subtype: 'status', session_id: initial.sessionId, permissionMode: 'plan' })
+  await vi.waitFor(async () => expect((await manager.open(id, '/tmp')).runtime?.permissionMode).toBe('plan'))
+  expect((await manager.open(id, '/tmp')).options?.mode).toBe('auto')
+  await manager.setMode(id, 'auto')
+  expect(query.setPermissionMode.mock.calls).toEqual([['auto'], ['auto']])
+})
+
+it('rejects new and resumed sends without exposing a prompt when auto is denied', async () => {
+  const createQuery = sdk.query.getMockImplementation()!
+  sdk.query.mockImplementation(params => {
+    const query = createQuery(params)
+    query.setPermissionMode.mockRejectedValue(new Error('auto blocked by policy'))
+    return query
+  })
+  const auto = { ...options, mode: 'auto' as const }
+  await expect(manager.start('/tmp', 'draft', auto, true)).rejects.toThrow('auto blocked by policy')
+  await expect(manager.send('restored', '/tmp', 'draft', auto)).rejects.toThrow('auto blocked by policy')
+  for (const [params] of sdk.query.mock.calls) {
+    expect(await params.prompt[Symbol.asyncIterator]().next()).toMatchObject({ done: true })
+  }
+  expect((await manager.open('restored', '/tmp')).messages).toEqual([])
+})
+
+it('keeps a queued prompt retryable when the restored engine rejects auto', async () => {
+  const auto = { ...options, mode: 'auto' as const }
+  const id = await manager.start('/tmp', 'first', auto, true)
+  const first = sdk.query.mock.results[0].value
+  await manager.send(id, '/tmp', 'queued draft', auto)
+  first.end()
+  await vi.waitFor(async () => expect((await manager.open(id, '/tmp')).live).toBe(false))
+  const createQuery = sdk.query.getMockImplementation()!
+  sdk.query.mockImplementationOnce(params => {
+    const query = createQuery(params)
+    query.setPermissionMode.mockRejectedValue(new Error('auto blocked by policy'))
+    return query
+  })
+  await expect(manager.queueAction(id, '/tmp', { type: 'resume' })).rejects.toThrow('auto blocked by policy')
+  expect((await manager.open(id, '/tmp')).queue).toMatchObject({ paused: true, items: [{ text: 'queued draft', status: 'failed' }] })
+  const prompt = sdk.query.mock.calls.at(-1)![0].prompt
+  expect(await prompt[Symbol.asyncIterator]().next()).toMatchObject({ done: true })
 })

@@ -40,6 +40,15 @@ it('summarizes a connection reset in the history preview when there is no reply 
   expect(view.getByRole('tooltip').textContent).toBe('请继续已完成第一步。')
 })
 
+it('keeps the history rail keyboard-accessible after turns are removed', () => {
+  const first: UiMessage = { id: 'first', role: 'user', parentToolUseId: null, blocks: [{ kind: 'text', text: '一' }] }
+  const second: UiMessage = { id: 'second', role: 'user', parentToolUseId: null, blocks: [{ kind: 'text', text: '二' }] }
+  const view = render(<ChatHistoryRail turns={[[first], [second]]} activeIndex={1} onJump={() => {}} />)
+  fireEvent.focus(view.getByRole('button', { name: '跳到第 2 轮' }))
+  view.rerender(<ChatHistoryRail turns={[[first]]} activeIndex={1} onJump={() => {}} />)
+  expect(view.getByRole('button', { name: '跳到第 1 轮' }).getAttribute('tabindex')).toBe('0')
+})
+
 it('normalizes only standalone stop notices and preserves user content', () => {
   const message: UiMessage = { id: 'stop', role: 'notice', source: 'unknown', startsTurn: false, parentToolUseId: null, blocks: [{ kind: 'text', text: '[Request interrupted by user]' }] }
   expect(isInterruptionNotice(message)).toBe(true)
