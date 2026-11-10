@@ -1,121 +1,150 @@
-/* The welcome preview owns its palette. Dismissal simply removes it, without
-   changing nativeTheme, root styles, or persisted preferences. */
+/* Local palette so appearance choices can be previewed before saving. */
 .welcome-page {
-  --welcome-bg: #eeeae2; --welcome-fg: #37352f; --welcome-muted: #777167;
-  --welcome-glass: #fffdf8b8; --welcome-edge: #ffffffeb; --welcome-line: #62523e19;
-  --welcome-field: #ffffffa6; --welcome-shadow: #6c51351c;
-  position: fixed; inset: 0; z-index: 80; overflow: auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: safe center;
-  padding: 44px 32px 20px; color: var(--welcome-fg); color-scheme: light;
-  background: radial-gradient(ellipse at 12% 12%, #d6a78b38, transparent 48%), radial-gradient(ellipse at 95% 90%, #d3c6a942, transparent 46%), var(--welcome-bg);
+  --welcome-bg: #f4f3f1;
+  --welcome-fg: #302e2b;
+  --welcome-muted: #625e58;
+  --welcome-rim: #ffffffd9;
+  --welcome-line: #35302a30;
+  --welcome-glass: #ffffff68;
+  --welcome-field: #faf9f7;
+  --welcome-arc: #d8d5cf;
+  --welcome-shadow: #25221d15;
+  --welcome-action: #a64329;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: auto;
+  isolation: isolate;
+  color: var(--welcome-fg);
+  color-scheme: light;
+  background: radial-gradient(ellipse at 50% 32%, var(--welcome-field), transparent 75%), var(--welcome-bg);
 }
 .welcome-page[data-preview="dark"] {
-  --welcome-bg: #20201e; --welcome-fg: #f0ece3; --welcome-muted: #b2aa9c;
-  --welcome-glass: #35342fc4; --welcome-edge: #f7ead42b; --welcome-line: #f2d7b21a;
-  --welcome-field: #22221f70; --welcome-shadow: #00000035;
+  --welcome-bg: #242322;
+  --welcome-fg: #f2f0ec;
+  --welcome-muted: #c4bfb8;
+  --welcome-rim: #f9f6ee3c;
+  --welcome-line: #f2ede137;
+  --welcome-glass: #e8e3d914;
+  --welcome-field: #2e2c29;
+  --welcome-arc: #403d39;
+  --welcome-shadow: #00000032;
+  --welcome-action: #f4a48b;
   color-scheme: dark;
-  background: radial-gradient(ellipse at 12% 12%, #a35d3624, transparent 48%), radial-gradient(ellipse at 95% 90%, #77654b20, transparent 46%), var(--welcome-bg);
 }
-.welcome-drag { position: fixed; top: 0; left: 0; right: 145px; height: 40px; }
+.welcome-page::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  inset: 78% -24% -44%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--welcome-arc), transparent 55%);
+  box-shadow: inset 0 2px 0 var(--welcome-rim);
+  opacity: .5;
+}
+.welcome-drag { position: fixed; z-index: 1; inset: 0 145px auto 0; height: 40px; }
 .welcome-glass {
-  position: relative; flex-shrink: 0; width: min(900px, 100%); padding: 35px 46px 28px;
-  border: 1px solid var(--welcome-edge); border-radius: 26px; outline: none;
-  background: linear-gradient(130deg, #ffffff16, #ffffff00 60%), var(--welcome-glass);
-  box-shadow: 0 30px 90px var(--welcome-shadow), inset 0 1px 0 #ffffff32, 0 2px 8px #00000004;
-  backdrop-filter: blur(36px) saturate(130%);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100%;
+  padding: 42px clamp(18px, 3vw, 40px) 12px;
+  outline: none;
 }
-.welcome-glass::before { content: ''; position: absolute; z-index: -1; inset: 18% 12% 40%; background: #dca37912; filter: blur(50px); border-radius: 50%; pointer-events: none; }
-.welcome-close { position: absolute; top: 17px; right: 17px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--welcome-muted); }
-.welcome-close:hover { background: var(--welcome-line); }
-.welcome-brand { display: flex; align-items: center; gap: 10px; color: var(--welcome-muted); font-size: 10px; letter-spacing: 1.7px; }
-.welcome-brand > svg { width: 27px; height: 27px; }
-.welcome-brand-line { width: 1px; height: 11px; background: var(--welcome-line); margin: 0 2px; }
-.welcome-header h1 { font-family: var(--font-serif); font-weight: 400; font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -.9px; margin: 17px 0 10px; }
-.welcome-header > p { color: var(--welcome-muted); font-size: 13px; line-height: 1.8; }
-.welcome-mobile-break { display: none; }
-.welcome-themes { margin: 26px 0 0; min-width: 0; }
-.welcome-themes legend, .welcome-defaults h2 { display: flex; align-items: center; width: 100%; font-size: 13px; font-weight: 500; margin-bottom: 13px; }
-.welcome-step { color: #c07c5e; font-family: var(--font-serif); font-size: 13px; margin-right: 11px; }
-.welcome-legend-note { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--welcome-muted); }
-.welcome-theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.welcome-theme-card { position: relative; display: block; min-width: 0; border: 1px solid var(--welcome-line); padding: 6px 6px 0; border-radius: 14px; background: var(--welcome-field); transition: border-color .18s, box-shadow .18s, transform .18s; cursor: pointer; }
-.welcome-theme-card:hover { transform: translateY(-2px); border-color: #d9775770; }
-.welcome-theme-card[data-selected="true"] { border-color: #c98162; box-shadow: 0 0 0 2px #c981621c, 0 6px 20px #8860400b; }
-.welcome-theme-card:has(input:focus-visible) { outline: 2px solid #c98162; outline-offset: 4px; }
+.welcome-progress, .welcome-theme-card, .welcome-select select {
+  border: 1px solid var(--welcome-line);
+  background: linear-gradient(165deg, var(--welcome-glass), transparent 90%);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 var(--welcome-rim), 0 5px 18px var(--welcome-shadow);
+}
+.welcome-progress {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border-radius: 99px;
+  padding: 8px 15px;
+  color: var(--welcome-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.welcome-track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 94px; }
+.welcome-track i { height: 4px; border-radius: 99px; background: var(--welcome-line); }
+.welcome-track i[data-filled="true"] { background: var(--welcome-action); }
+.welcome-content { display: grid; place-items: center; padding: 32px 0; min-width: 0; }
+.welcome-content > * { width: min(100%, 760px); }
+.welcome-content h1 {
+  margin: 0 0 clamp(24px, 5vh, 54px);
+  text-align: center;
+  font-family: "Songti SC", "Noto Serif SC", SimSun, Georgia, serif;
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 500;
+  line-height: 1.18;
+}
+.welcome-intro { display: grid; justify-items: center; gap: 16px; }
+.welcome-intro h1 { margin: 0; }
+.welcome-intro .crab { width: clamp(150px, 24vw, 240px); height: auto; }
+.welcome-theme-grid, .welcome-default-grid { display: grid; gap: clamp(8px, 2vw, 22px); }
+.welcome-theme-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; padding: 0; margin: 0; border: 0; }
+.welcome-default-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.welcome-theme-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  border-radius: 20px;
+  padding: clamp(7px, 2vw, 22px);
+  text-align: center;
+  font-size: 15px;
+  cursor: pointer;
+}
+.welcome-theme-card:hover, .welcome-theme-card[data-selected="true"] { border-color: var(--welcome-muted); }
 .welcome-theme-card input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.welcome-theme-caption { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 8px; }
-.welcome-theme-caption > span:first-child { display: flex; align-items: center; gap: 8px; }
-.welcome-theme-caption strong { font-weight: 500; font-size: 12px; }
-.welcome-theme-caption span span { margin-left: 3px; font-size: 10px; color: var(--welcome-muted); }
-.welcome-check { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; border: 1px solid var(--welcome-muted); color: white; }
-[data-selected="true"] .welcome-check { background: #c77d5e; border-color: #c77d5e; }
-.welcome-system { display: flex; align-items: center; gap: 6px; margin: 11px auto 0; color: var(--welcome-muted); font-size: 11px; padding: 4px 8px; border-radius: 6px; }
-.welcome-system:hover { background: var(--welcome-line); }
-.welcome-system-check { display: grid; place-items: center; width: 13px; height: 13px; margin-left: 2px; border: 1px solid var(--welcome-muted); border-radius: 4px; }
-.welcome-system[aria-pressed="true"] .welcome-system-check { background: #c77d5e; border-color: #c77d5e; color: white; }
-.welcome-defaults { margin-top: 18px; }
-.welcome-default-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+.welcome-check { position: absolute; top: 8px; right: 8px; color: var(--welcome-fg); }
+.welcome-mini {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.65;
+  overflow: hidden;
+  border: 1px solid #77716c66;
+  border-radius: 8px;
+  background: var(--mini-bg, #faf9f7);
+}
+.welcome-mini i { position: absolute; inset: 0 auto 0 0; width: 29%; background: var(--mini-side, #dedbd7); }
+.welcome-mini b { position: absolute; inset: auto 10% 17% 38%; height: 19%; border-radius: 4px; background: var(--mini-input, #dfdcd8); }
+.welcome-theme-card[data-look="dark"] { --mini-bg: #333230; --mini-side: #242321; --mini-input: #57534f; }
+.welcome-theme-card[data-look="system"] { --mini-bg: linear-gradient(90deg, #faf9f7 54%, #333230 54%); --mini-side: #d0ccc7; --mini-input: #9e9993; }
 .welcome-control { min-width: 0; }
-.welcome-control > label { display: flex; gap: 9px; align-items: center; font-size: 11px; margin-bottom: 8px; }
-.welcome-control > label > span { color: var(--welcome-muted); font-size: 8px; letter-spacing: 1.5px; }
+.welcome-control label { display: block; margin-bottom: 8px; font-size: 15px; }
 .welcome-select { position: relative; }
-.welcome-select select { appearance: none; width: 100%; border: 1px solid var(--welcome-line); border-radius: 10px; background: var(--welcome-field); color: var(--welcome-fg); padding: 11px 34px 11px 13px; font-size: 12px; text-overflow: ellipsis; }
-.welcome-select > svg { pointer-events: none; position: absolute; right: 12px; top: 14px; color: var(--welcome-muted); }
-.welcome-control > p { margin-top: 7px; color: var(--welcome-muted); font-size: 10px; min-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.welcome-catalog-status { display: flex; align-items: center; gap: 6px; margin-top: 12px; color: var(--welcome-muted); font-size: 10px; line-height: 1.7; }
-.welcome-status-dot { width: 5px; height: 5px; border-radius: 50%; background: #ad9d85; flex-shrink: 0; }
-.welcome-status-dot[data-ready="true"] { background: #899676; }
-.welcome-catalog-status > button { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 3px 5px; flex-shrink: 0; }
-.welcome-save-error { margin: 12px 0 0; color: var(--danger); font-size: 12px; }
-.welcome-footer { border-top: 1px solid var(--welcome-line); margin-top: 23px; padding-top: 21px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.welcome-footer strong { font-family: var(--font-serif); font-weight: 400; font-size: 17px; }
-.welcome-footer p { margin-top: 6px; font-size: 10px; color: var(--welcome-muted); }
-.welcome-actions { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
-.welcome-later { color: var(--welcome-muted); font-size: 12px; padding: 9px 3px; }
-.welcome-finish { display: flex; align-items: center; gap: 22px; padding: 11px 18px; border-radius: 10px; color: #fffaf5; background: #bd7354; box-shadow: inset 0 1px 0 #ffffff1f, 0 3px 8px #86513518; font-size: 12px; }
-.welcome-finish:hover { background: #ae6547; }
-.welcome-page button:focus-visible, .welcome-page select:focus-visible { outline: 2px solid #c98162; outline-offset: 3px; }
-.welcome-page button:disabled, .welcome-page select:disabled { opacity: .55; cursor: default; }
-.welcome-bottom-note { margin-top: 18px; color: var(--welcome-muted); opacity: .7; font-family: var(--font-serif); font-size: 10px; letter-spacing: 1px; }
-/* Real DOM previews reflect the selected model and thinking level, in two palettes. */
-.welcome-mini { --mini-bg: #fffefa; --mini-sidebar: #eeede8; --mini-card: #ffffff; --mini-fg: #4a463e; --mini-line: #665c4520; display: flex; height: 154px; border: 1px solid var(--mini-line); border-radius: 9px; overflow: hidden; color: var(--mini-fg); background: var(--mini-bg); }
-[data-theme="dark"] .welcome-mini { --mini-bg: #2a2926; --mini-sidebar: #22211f; --mini-card: #34332f; --mini-fg: #ddd7ca; --mini-line: #e5dcc51b; }
-.welcome-mini-sidebar { position: relative; width: 23%; background: var(--mini-sidebar); padding: 10px 8px; border-right: 1px solid var(--mini-line); }
-.welcome-mini-dots { display: flex; gap: 3px; margin-bottom: 14px; }
-.welcome-mini-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--mini-fg); opacity: .22; }
-.welcome-mini-new { display: flex; gap: 4px; align-items: center; font-size: 6px; white-space: nowrap; }
-.welcome-mini-line { display: block; height: 3px; margin-top: 12px; width: 80%; border-radius: 3px; background: var(--mini-fg); opacity: .11; }
-.welcome-mini-line.short { width: 58%; }
-.welcome-mini-profile { position: absolute; bottom: 10px; display: flex; align-items: center; gap: 5px; width: 70%; }
-.welcome-mini-profile i { height: 10px; width: 10px; border-radius: 50%; background: #c9816270; }
-.welcome-mini-profile span { width: 55%; height: 3px; background: var(--mini-fg); opacity: .16; }
-.welcome-mini-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 13px; }
-.welcome-mini-greeting { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; font-family: var(--font-serif); font-size: 12px; }
-.welcome-mini-greeting svg { height: 17px; width: 17px; }
-.welcome-mini-composer { border: 1px solid var(--mini-line); border-radius: 8px; background: var(--mini-card); width: 100%; padding: 9px 8px 6px; box-shadow: 0 2px 8px #00000005; }
-.welcome-mini-composer > span { font-size: 6px; opacity: .5; }
-.welcome-mini-composer > div { display: flex; align-items: center; gap: 7px; margin-top: 12px; }
-.welcome-mini-composer > div > span { display: flex; gap: 2px; align-items: center; font-size: 5px; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .65; }
-.welcome-mini-composer i { display: grid; place-items: center; width: 14px; height: 14px; margin-left: auto; border-radius: 5px; background: #c98162; color: white; flex-shrink: 0; }
-.welcome-mini-chips { display: flex; gap: 4px; margin-top: 8px; }
-.welcome-mini-chips span { font-size: 5px; padding: 3px 5px; border: 1px solid var(--mini-line); border-radius: 4px; white-space: nowrap; opacity: .6; }
-@media (max-width: 700px) {
-  .welcome-page { padding: 48px 16px 16px; }
-  .welcome-glass { padding: 28px 23px 23px; }
-  .welcome-theme-grid, .welcome-default-grid { gap: 12px; }
-  .welcome-theme-caption span span { display: none; }
-  .welcome-mini-sidebar { display: none; }
-  .welcome-mini-main { padding: 10px; }
-  .welcome-footer { flex-wrap: wrap; }
-  .welcome-actions { margin-left: auto; }
-  .welcome-legend-note { font-size: 9px; }
+.welcome-select select {
+  appearance: none;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  padding: 9px 36px 9px 13px;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
 }
-@media (max-width: 440px) {
+.welcome-select select option { background: var(--welcome-field); color: var(--welcome-fg); }
+.welcome-select > svg { position: absolute; right: 13px; top: 15px; pointer-events: none; color: var(--welcome-muted); }
+.welcome-model-target { margin: 8px 0 0; color: var(--welcome-muted); font-size: 13px; overflow-wrap: anywhere; }
+.welcome-catalog-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 16px; color: var(--welcome-muted); }
+.welcome-catalog-status button { display: inline-flex; align-items: center; gap: 6px; color: var(--welcome-fg); }
+.welcome-save-error { margin: 12px 0 0; color: var(--welcome-action); overflow-wrap: anywhere; }
+.welcome-actions { display: flex; justify-content: space-between; gap: 12px; }
+.welcome-actions button { min-height: 44px; padding: 0; border: 0; background: transparent; font-size: 15px; }
+.welcome-later { color: var(--welcome-muted); }
+.welcome-finish { color: var(--welcome-action); font-weight: 600; }
+.welcome-page button:not(:disabled):hover { text-decoration: underline; text-underline-offset: 4px; }
+.welcome-page button:disabled, .welcome-page select:disabled { opacity: .6; cursor: default; }
+.welcome-page :is(button, select):focus-visible, .welcome-theme-card:has(input:focus-visible) {
+  outline: 2px solid var(--welcome-muted);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
   .welcome-default-grid { grid-template-columns: 1fr; }
-  .welcome-mini-chips { display: none; }
-  .welcome-mobile-break { display: initial; }
-  .welcome-mini-greeting { font-size: 9px; }
-  .welcome-legend-note { display: none; }
+  .welcome-check { top: 4px; right: 4px; width: 13px; height: 13px; }
 }
-@media (prefers-reduced-motion: reduce) { .welcome-theme-card { transition: none; } }
-[data-reduce-motion="true"] .welcome-theme-card { transition: none; }

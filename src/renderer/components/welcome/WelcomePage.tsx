@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ArrowUp, Check, ChevronDown, Monitor, Moon, Plus, RefreshCw, Sun, X } from 'lucide-react'
+import { Check, ChevronDown, RefreshCw } from 'lucide-react'
 import type { EffortLevel, Settings, Theme } from '@shared/types'
 import { EFFORT_LEVELS } from '@shared/format'
 import { useDesk } from '../../store'
 import { useModalLayer } from '../../modalStore'
 import { errorText } from '../../ipcError'
 import { useModelCatalog } from '../newSession/useModelCatalog'
-import { ActivitySpark } from '../ui/ActivityIndicator'
+import { Crab } from '../newSession/Crab'
+import { WindowPin } from '../ui/WindowPin'
 import '../../styles/welcome.css'
 
 /** A local draft: neither theme previews nor model choices write CLI or app settings. */
-export function WelcomePage() {
+export function WelcomePage({ showWindowPin = false }: { showWindowPin?: boolean }) {
   useModalLayer()
   const { settings, home, updateSettings, setWelcomeOpen } = useDesk()
+  const [step, setStep] = useState(1)
   const [theme, setTheme] = useState<Theme>(settings?.theme ?? 'system')
   const [modelValue, setModelValue] = useState(settings?.defaultModel ?? '')
   const [effort, setEffort] = useState<EffortLevel | null>(settings?.defaultEffort ?? null)
@@ -41,12 +43,17 @@ export function WelcomePage() {
     return () => { if (previous?.isConnected) previous.focus() }
   }, [])
 
+  function goTo(next: number) {
+    setStep(next)
+    dialog.current?.focus()
+  }
+
   function dismiss() {
     if (!locked.current) setWelcomeOpen(false)
   }
 
   async function finish() {
-    if (locked.current) return
+    if (locked.current || (confirmed && models.length > 0 && !model)) return
     locked.current = true
     setSaving(true)
     setSaveError(null)
@@ -78,62 +85,81 @@ export function WelcomePage() {
         if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last?.focus() }
         else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { event.preventDefault(); first?.focus() }
       }}>
-      <button className="welcome-close" type="button" aria-label="关闭欢迎页" disabled={saving} onClick={dismiss}><X size={18} /></button>
-      <header className="welcome-header">
-        <div className="welcome-brand"><ActivitySpark active={false} /><span>CLAUDE CODE</span><span className="welcome-brand-line" /><span>为你而设</span></div>
-        <h1 id="welcome-title">让灵感，有个舒服的起点。</h1>
-        <p>欢迎来到 Claude Code。选一个喜欢的外观，<br className="welcome-mobile-break" />再让每一次对话更合你心意。</p>
-      </header>
+      {showWindowPin && <WindowPin />}
+      <div className="welcome-progress" role="progressbar" aria-label="欢迎流程进度"
+        aria-valuemin={0} aria-valuemax={3} aria-valuenow={step} aria-valuetext={`第 ${step} 步，共 3 步`}>
+        <span className="welcome-track" aria-hidden="true">
+          {[1, 2, 3].map(index => <i key={index} data-filled={index <= step} />)}
+        </span>
+        <span aria-hidden="true">{step} / 3</span>
+      </div>
 
-      <fieldset className="welcome-themes" disabled={saving}>
-        <legend><span className="welcome-step">01</span>选择你的空间<span className="welcome-legend-note">即刻预览，随时可改</span></legend>
-        <div className="welcome-theme-grid">
-          {(['light', 'dark'] as const).map(value => <label key={value} className="welcome-theme-card" data-theme={value} data-selected={theme === value}>
-            <input type="radio" name="welcome-theme" aria-label={value === 'light' ? '浅色外观' : '深色外观'} checked={theme === value} onChange={() => setTheme(value)} />
-            <MiniWorkspace model={model?.label} effort={EFFORT_LEVELS.find(item => item.value === supportedEffort)?.label} />
-            <div className="welcome-theme-caption"><span>{value === 'light' ? <Sun size={16} /> : <Moon size={16} />}<strong>{value === 'light' ? '浅色' : '深色'}</strong><span>{value === 'light' ? '明亮，留白，专注' : '温润，安静，沉浸'}</span></span><span className="welcome-check">{theme === value && <Check size={13} strokeWidth={3} />}</span></div>
-          </label>)}
-        </div>
-        <button type="button" className="welcome-system" aria-pressed={theme === 'system'} onClick={() => setTheme(theme === 'system' ? preview : 'system')}><Monitor size={13} /><span>跟随系统外观</span><span className="welcome-system-check">{theme === 'system' && <Check size={10} strokeWidth={3} />}</span></button>
-      </fieldset>
-
-      <section className="welcome-defaults" aria-labelledby="welcome-defaults-title">
-        <h2 id="welcome-defaults-title"><span className="welcome-step">02</span>对话，从你的偏好开始<span className="welcome-legend-note">新对话默认值</span></h2>
-        <div className="welcome-default-grid">
-          <div className="welcome-control">
-            <label htmlFor="welcome-model">常用模型 <span>MODEL</span></label>
-            <div className="welcome-select"><select id="welcome-model" disabled={saving || !confirmed || !models.length} value={model?.value ?? ''} onChange={event => { setModelValue(event.target.value); setEffort(null) }}>
-              {!model && <option value="">{loading ? '正在读取真实模型…' : '保留当前默认模型'}</option>}
-              {models.map(item => <option key={item.value} value={item.value}>{item.label}{item.resolvedModel && item.resolvedModel !== item.label ? ` · ${item.resolvedModel}` : ''}</option>)}
-            </select><ChevronDown size={14} /></div>
-            <p className="welcome-model-target" title={model?.resolvedModel ?? model?.value}>{model ? `实际模型：${model.resolvedModel ?? model.value}` : `当前默认：${settings?.defaultModel ?? '未设置'}`}</p>
+      <main className="welcome-content">
+        {step === 1 && <div className="welcome-intro">
+          <Crab />
+          <h1 id="welcome-title">欢迎来到 Claude Code</h1>
+        </div>}
+        {step === 2 && <section className="welcome-appearance">
+          <h1 id="welcome-title">选择外观</h1>
+          <fieldset className="welcome-theme-grid" aria-labelledby="welcome-title">
+            {(['light', 'dark', 'system'] as const).map((value, index) => {
+              const label = ['浅色', '深色', '跟随系统'][index]
+              return <label key={value} className="welcome-theme-card" data-look={value} data-selected={theme === value}>
+                <input type="radio" name="welcome-theme" aria-label={label} checked={theme === value} onChange={() => setTheme(value)} />
+                <span className="welcome-mini" aria-hidden="true"><i /><b /></span>
+                <span>{label}</span>
+                {theme === value && <Check className="welcome-check" size={17} aria-hidden="true" />}
+              </label>
+            })}
+          </fieldset>
+        </section>}
+        {step === 3 && <section className="welcome-defaults">
+          <h1 id="welcome-title">对话偏好</h1>
+          <div className="welcome-default-grid">
+            <div className="welcome-control">
+              <label htmlFor="welcome-model">默认模型</label>
+              <div className="welcome-select">
+                <select id="welcome-model" disabled={saving || !confirmed || !models.length} value={model?.value ?? ''}
+                  onChange={event => { setModelValue(event.target.value); setEffort(null) }}>
+                  {!model && <option value="" disabled>选择模型</option>}
+                  {models.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+                <ChevronDown size={16} aria-hidden="true" />
+              </div>
+              {model?.resolvedModel && model.resolvedModel !== model.label &&
+                <p className="welcome-model-target" title={model.resolvedModel}>实际模型：{model.resolvedModel}</p>}
+            </div>
+            <div className="welcome-control">
+              <label htmlFor="welcome-effort">思考程度</label>
+              <div className="welcome-select">
+                <select id="welcome-effort" value={supportedEffort ?? ''} disabled={saving || !confirmed || !model?.efforts.length}
+                  onChange={event => setEffort(event.target.value ? event.target.value as EffortLevel : null)}>
+                  <option value="">自动</option>
+                  {EFFORT_LEVELS.filter(item => model?.efforts.includes(item.value)).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+                <ChevronDown size={16} aria-hidden="true" />
+              </div>
+            </div>
           </div>
-          <div className="welcome-control">
-            <label htmlFor="welcome-effort">思考程度 <span>THINKING</span></label>
-            <div className="welcome-select"><select id="welcome-effort" value={supportedEffort ?? ''} disabled={saving || !confirmed || !model?.efforts.length} onChange={event => setEffort(event.target.value ? event.target.value as EffortLevel : null)}>
-              <option value="">自动 · 跟随模型</option>
-              {EFFORT_LEVELS.filter(item => model?.efforts.includes(item.value)).map(item => <option key={item.value} value={item.value}>{item.label} · {item.description}</option>)}
-            </select><ChevronDown size={14} /></div>
-            <p>{model && !model.efforts.length ? '当前模型未提供可调节的思考档位' : '仅显示当前模型支持的档位'}</p>
-          </div>
-        </div>
-        <div className="welcome-catalog-status" role="status" aria-live="polite">
-          <span className="welcome-status-dot" data-ready={confirmed && models.length > 0} />
-          <span>{loading ? cached ? '正在核对 CLI，暂时显示已缓存目录…' : '正在从 Claude Code CLI 读取模型…' : error ? '模型读取失败，保留现有默认值。' : !models.length ? '当前 CLI 未提供可用模型，保留现有默认值。' : !model ? '请选择目录中的模型，或保留现有默认值。' : '已同步当前 CLI · 支持 CC Switch 接入映射'}</span>
-          <button type="button" aria-label="刷新欢迎页模型" title={error ?? '重新读取 CLI 模型目录'} disabled={saving || loading} onClick={retry}><RefreshCw size={12} />{error || !models.length ? '重试' : '刷新'}</button>
-        </div>
-      </section>
+          {(loading || error || !models.length) && <div className="welcome-catalog-status" role="status">
+            <span>{loading ? '正在读取 CLI 模型…' : error ? '模型读取失败。' : '当前 CLI 未提供可用模型。'}</span>
+            {!loading && <button type="button" aria-label="刷新欢迎页模型" title={error ?? undefined} disabled={saving} onClick={retry}>
+              <RefreshCw size={14} aria-hidden="true" />重试
+            </button>}
+          </div>}
+          {saveError && <p className="welcome-save-error" role="alert">保存失败：{saveError}。请重试。</p>}
+        </section>}
+      </main>
 
-      {saveError && <p className="welcome-save-error" role="alert">保存失败：{saveError}。已保留本页选择，请重试。</p>}
-      <footer className="welcome-footer"><div><strong>准备好，一起创造。</strong><p>这些偏好只影响桌面端，可在设置中随时调整。</p></div><div className="welcome-actions"><button className="welcome-later" type="button" disabled={saving} onClick={dismiss}>{settings?.welcomeCompleted ? '取消' : '稍后设置'}</button><button className="welcome-finish" type="button" disabled={saving} onClick={() => void finish()}>{saving ? '正在保存…' : '开始使用'}<ArrowRight size={16} /></button></div></footer>
+      <footer className="welcome-actions">
+        <button className="welcome-later" type="button" disabled={saving}
+          onClick={() => step === 1 ? dismiss() : goTo(step - 1)}>
+          {step === 1 ? settings?.welcomeCompleted ? '取消' : '稍后设置' : '上一步'}
+        </button>
+        {step < 3 ? <button className="welcome-finish" type="button" onClick={() => goTo(step + 1)}>继续</button> :
+          <button className="welcome-finish" type="button" disabled={saving || loading || (confirmed && models.length > 0 && !model)}
+            onClick={() => void finish()}>{saving ? '正在保存…' : '开始使用'}</button>}
+      </footer>
     </div>
-    <p className="welcome-bottom-note">你的工作方式，你来定义。</p>
-  </div>
-}
-
-function MiniWorkspace({ model, effort }: { model?: string; effort?: string }) {
-  return <div className="welcome-mini" aria-hidden="true">
-    <aside className="welcome-mini-sidebar"><div className="welcome-mini-dots"><i /><i /><i /></div><span className="welcome-mini-new"><Plus size={10} />新对话</span><span className="welcome-mini-line" /><span className="welcome-mini-line short" /><span className="welcome-mini-line" /><div className="welcome-mini-profile"><i /><span /></div></aside>
-    <div className="welcome-mini-main"><div className="welcome-mini-greeting"><ActivitySpark active={false} /><span>有什么新想法？</span></div><div className="welcome-mini-composer"><span>一起把想法变成现实…</span><div><span>{model ?? '当前模型'}<ChevronDown size={7} /></span><span>{effort ?? '自动'}</span><i><ArrowUp size={9} /></i></div></div><div className="welcome-mini-chips"><span>探索项目</span><span>构建新想法</span><span>整理思路</span></div></div>
   </div>
 }

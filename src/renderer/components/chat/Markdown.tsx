@@ -39,7 +39,12 @@ function rehypeFilePaths() {
       for (const m of matches) {
         if (m.start > i) out.push({ type: 'text', value: text.slice(i, m.start) })
         const raw = text.slice(m.start, m.end)
-        out.push({ type: 'element', tagName: 'a', properties: { href: raw.replace(/^@/, ''), dataBare: true }, children: [{ type: 'text', value: raw }] })
+        out.push({
+          type: 'element',
+          tagName: 'a',
+          properties: { dataFilePath: m.ref.path, dataFileLine: m.ref.line },
+          children: [{ type: 'text', value: raw }]
+        })
         i = m.end
       }
       if (i < text.length) out.push({ type: 'text', value: text.slice(i) })
@@ -53,24 +58,33 @@ const REHYPE = [rehypeFilePaths]
 // 默认会去掉 file:// 链接；本地文件链接要保留
 const urlTransform = (url: string): string => (/^file:/i.test(url) ? url : defaultUrlTransform(url))
 
-export const Markdown = memo(function Markdown({ text }: { text: string }) {
+export const Markdown = memo(function Markdown({ text, userMessage = false }: { text: string; userMessage?: boolean }) {
   return (
-    <div className="md select-text">
+    <div className={userMessage ? 'md md-user select-text' : 'md select-text'}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={REHYPE}
         urlTransform={urlTransform}
         components={{
-          a: ({ href, children, node }) => {
+          a: ({ href, children, node, title }) => {
+            const path = node?.properties.dataFilePath
+            if (typeof path === 'string') {
+              const line = node?.properties.dataFileLine
+              return <FileLink pathRef={{ path, line: typeof line === 'number' ? line : undefined }} fallback={children} attachment={userMessage} />
+            }
+            const webUrl = href && /^https?:\/\//i.test(href) ? URL.parse(href) : null
+            if (webUrl && href) {
+              const label = children === href || children === href.replace(/^https?:\/\//i, '') ? webUrl.host : children
+              return <a className="web-link" href={href} title={title ? `${title}\n${href}` : href} target="_blank" rel="noreferrer">{label}</a>
+            }
             const link = (
-              <a href={href} target="_blank" rel="noreferrer">
+              <a href={href} title={title} target="_blank" rel="noreferrer">
                 {children}
               </a>
             )
             const ref = href && !/^(https?|mailto):/i.test(href) ? parsePathRef(href) : null
             if (!ref) return link
-            // 正文里直接写出的路径：不存在时就是普通文字
-            return <FileLink pathRef={ref} fallback={node?.properties?.dataBare ? children : link} />
+            return <FileLink pathRef={ref} fallback={link} />
           },
           code: ({ node, children, ...rest }) => {
             const code = <code {...rest}>{children}</code>

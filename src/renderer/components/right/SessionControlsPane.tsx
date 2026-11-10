@@ -19,6 +19,7 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
   const [tab, setTab] = useState(initialTab)
   const [source, setSource] = useState<DiffSource | 'turn'>(turnDiff ? 'turn' : 'working')
   const [data, setData] = useState<string | PermissionRules | null>(null)
+  const [outsideRepository, setOutsideRepository] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -31,6 +32,7 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
     let loading = false
     setData(null)
     setError('')
+    setOutsideRepository(false)
     async function load() {
       if (loading) return
       loading = true
@@ -40,7 +42,10 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
           : tab === 'diff'
             ? await window.desk.files.diff(cwd, source === 'turn' ? 'working' : source)
             : await window.desk.chat.rules(sessionId, cwd)
-        if (!cancelled) setData(value)
+        if (!cancelled) {
+          setOutsideRepository(tab === 'diff' && value === null)
+          setData(value)
+        }
       } catch (e) {
         if (!cancelled) setError(String(e))
       } finally { loading = false }
@@ -87,20 +92,35 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
         <button key={value} onClick={() => setTab(value)}
           className={`rounded-lg px-3 py-2 ${tab === value ? 'bg-active' : 'hover:bg-hover'}`}>{label}</button>)}
     </nav>
-    <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>刷新</button>
-    {error && <p role="alert" className="my-3 text-danger">{error}</p>}
-    {tab === 'diff' && <>
+    {tab === 'rules' && <>
+      <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>刷新</button>
+      {error && <p role="alert" className="my-3 text-danger">{error}</p>}
+    </>}
+    {tab === 'diff' && outsideRepository && <>
+      <p className="text-fg2">当前目录未使用 Git</p>
+      {turnDiff && <button onClick={() => setSource('turn')} className={buttonStyle + ' mt-3'}>查看本轮工具修改片段</button>}
+    </>}
+    {tab === 'diff' && !outsideRepository && <>
+      <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>{error ? '重试' : '刷新'}</button>
       <select aria-label="比较来源" value={source} onChange={e => setSource(e.target.value as DiffSource | 'turn')}
         className="mb-3 ml-2 max-w-full rounded-lg border border-line bg-bg p-1.5">
         {turnDiff && <option value="turn">本轮工具修改片段</option>}
         <option value="working">工作区相对 HEAD</option>
         <option value="branch">分支相对基准分支</option>
       </select>
-      {typeof data === 'string' && <>
-        <button disabled={!data} className={buttonStyle} onClick={attachDiff}>附到下一条提问</button>
+      {error && <div className="my-3">
+        <p role="alert" className="text-danger">无法读取改动</p>
+        <details className="mt-2 text-fg2">
+          <summary className="cursor-pointer">查看详情</summary>
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[12px]">{error}</pre>
+        </details>
+      </div>}
+      {data === '' && <p className="mt-3 text-fg2" title="仅比较已跟踪文件">暂无改动</p>}
+      {typeof data === 'string' && data && <>
+        <button className={buttonStyle} onClick={attachDiff}>附到下一条提问</button>
         <pre className="mt-3 overflow-x-auto rounded-xl border border-line p-3 font-mono text-[12px]">
-          {data ? data.split('\n').map((line, index) => <div key={index}
-            className={line.startsWith('+') ? 'text-green-600 dark:text-green-400' : line.startsWith('-') ? 'text-danger' : 'text-fg2'}>{line || ' '}</div>) : '没有已跟踪文件的差异'}
+          {data.split('\n').map((line, index) => <div key={index}
+            className={line.startsWith('+') ? 'text-green-600 dark:text-green-400' : line.startsWith('-') ? 'text-danger' : 'text-fg2'}>{line || ' '}</div>)}
         </pre>
       </>}
     </>}

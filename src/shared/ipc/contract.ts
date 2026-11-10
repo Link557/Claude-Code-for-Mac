@@ -122,7 +122,7 @@ export const contract = {
     onConfigChanged: event<[change: ClaudeConfigChange]>()
   },
   files: {
-    diff: invoke<[projectPath: string, source: DiffSource], string>(),
+    diff: invoke<[projectPath: string, source: DiffSource], string | null>(),
     /** Electron 44 不再在 File 对象上暴露 path，需要通过 webUtils 转换 */
     pathFor: local<(file: File) => string>(),
     saveImage: invoke<[bytes: Uint8Array, mime: string], string>(),

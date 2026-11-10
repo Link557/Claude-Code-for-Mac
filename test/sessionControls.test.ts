@@ -10,6 +10,11 @@ const exec = promisify(execFile)
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function scratch() { const root = await mkdtemp(join(tmpdir(), 'session-controls-')); roots.push(root); return root }
+it('distinguishes a non-Git directory from a failed Git invocation', async () => {
+  const cwd = await scratch()
+  expect(await gitDiff(cwd, 'working')).toBeNull()
+  await expect(gitDiff(join(cwd, 'missing'), 'working')).rejects.toThrow()
+})
 it('shows working tree changes separately from committed branch changes', async () => {
   const cwd = await scratch()
   const git = (args: string[]) => exec('git', args, { cwd })

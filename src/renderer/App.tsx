@@ -174,6 +174,6 @@ export function App() {
       {pendingProjectPath && <AddProjectDialog path={pendingProjectPath} />}
       {importCandidates && <ImportHistoryDialog candidates={importCandidates} />}
       {searchOpen && <SearchDialog />}
-    </div>{welcomeOpen && <WelcomePage />}{windows && <WindowPin visible={view.kind === 'session' && !welcomeOpen} />}</>
+    </div>{welcomeOpen && <WelcomePage showWindowPin={windows} />}{windows && <WindowPin visible={view.kind === 'session' && !welcomeOpen} />}</>
   )
 }
