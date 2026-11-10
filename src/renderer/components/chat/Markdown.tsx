@@ -66,13 +66,17 @@ export const Markdown = memo(function Markdown({ text, userMessage = false }: { 
         rehypePlugins={REHYPE}
         urlTransform={urlTransform}
         components={{
+          ...(userMessage && {
+            // Rendering a stored user message must not request a remote image.
+            img: ({ alt }) => <span>{alt || '图片'}</span>
+          }),
           a: ({ href, children, node, title }) => {
             const path = node?.properties.dataFilePath
             if (typeof path === 'string') {
               const line = node?.properties.dataFileLine
               return <FileLink pathRef={{ path, line: typeof line === 'number' ? line : undefined }} fallback={children} attachment={userMessage} />
             }
-            const webUrl = href && /^https?:\/\//i.test(href) ? URL.parse(href) : null
+            const webUrl = userMessage && href && /^https?:\/\//i.test(href) ? URL.parse(href) : null
             if (webUrl && href) {
               const label = children === href || children === href.replace(/^https?:\/\//i, '') ? webUrl.host : children
               return <a className="web-link" href={href} title={title ? `${title}\n${href}` : href} target="_blank" rel="noreferrer">{label}</a>

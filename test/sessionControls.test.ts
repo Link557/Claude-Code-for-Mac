@@ -15,6 +15,14 @@ it('distinguishes a non-Git directory from a failed Git invocation', async () =>
   expect(await gitDiff(cwd, 'working')).toBeNull()
   await expect(gitDiff(join(cwd, 'missing'), 'working')).rejects.toThrow()
 })
+it('reports clean and staged changes before the first commit', async () => {
+  const cwd = await scratch()
+  await exec('git', ['init'], { cwd })
+  expect(await gitDiff(cwd, 'working')).toBe('')
+  await writeFile(join(cwd, 'new.txt'), 'staged content\n')
+  await exec('git', ['add', 'new.txt'], { cwd })
+  expect(await gitDiff(cwd, 'working')).toContain('+staged content')
+})
 it('shows working tree changes separately from committed branch changes', async () => {
   const cwd = await scratch()
   const git = (args: string[]) => exec('git', args, { cwd })

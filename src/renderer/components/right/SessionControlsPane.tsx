@@ -18,8 +18,8 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
   const [addingRule, setAddingRule] = useState(false)
   const [tab, setTab] = useState(initialTab)
   const [source, setSource] = useState<DiffSource | 'turn'>(turnDiff ? 'turn' : 'working')
-  const [data, setData] = useState<string | PermissionRules | null>(null)
-  const [outsideRepository, setOutsideRepository] = useState(false)
+  // undefined means no result yet; null is a confirmed non-Git directory.
+  const [data, setData] = useState<string | PermissionRules | null>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -29,26 +29,19 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
   useEffect(() => {
     if (!active) return
     let cancelled = false
-    let loading = false
-    setData(null)
+    setData(undefined)
     setError('')
-    setOutsideRepository(false)
     async function load() {
-      if (loading) return
-      loading = true
       try {
         const value = tab === 'diff' && source === 'turn'
           ? turnDiff ?? ''
           : tab === 'diff'
             ? await window.desk.files.diff(cwd, source === 'turn' ? 'working' : source)
             : await window.desk.chat.rules(sessionId, cwd)
-        if (!cancelled) {
-          setOutsideRepository(tab === 'diff' && value === null)
-          setData(value)
-        }
+        if (!cancelled) setData(value)
       } catch (e) {
         if (!cancelled) setError(String(e))
-      } finally { loading = false }
+      }
     }
     void load()
     return () => { cancelled = true }
@@ -83,6 +76,7 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
     drafts.updateDraft(sessionId, { text: text + '\n请审阅以下差异\n' + data })
   }
 
+  const outsideRepository = data === null
   const ruleState = data && typeof data !== 'string' ? data : null
   const rules: PermissionRule[] = ruleState?.rules ?? []
   const buttonStyle = 'rounded-lg bg-chip px-3 py-1.5 disabled:opacity-40'
@@ -92,16 +86,13 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
         <button key={value} onClick={() => setTab(value)}
           className={`rounded-lg px-3 py-2 ${tab === value ? 'bg-active' : 'hover:bg-hover'}`}>{label}</button>)}
     </nav>
-    {tab === 'rules' && <>
-      <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>刷新</button>
-      {error && <p role="alert" className="my-3 text-danger">{error}</p>}
-    </>}
+    <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>{tab === 'diff' && error ? '重试' : '刷新'}</button>
+    {tab === 'rules' && error && <p role="alert" className="my-3 text-danger">{error}</p>}
     {tab === 'diff' && outsideRepository && <>
-      <p className="text-fg2">当前目录未使用 Git</p>
+      <p className="mt-3 text-fg2">当前目录未使用 Git</p>
       {turnDiff && <button onClick={() => setSource('turn')} className={buttonStyle + ' mt-3'}>查看本轮工具修改片段</button>}
     </>}
     {tab === 'diff' && !outsideRepository && <>
-      <button onClick={() => setRevision(r => r + 1)} className={buttonStyle}>{error ? '重试' : '刷新'}</button>
       <select aria-label="比较来源" value={source} onChange={e => setSource(e.target.value as DiffSource | 'turn')}
         className="mb-3 ml-2 max-w-full rounded-lg border border-line bg-bg p-1.5">
         {turnDiff && <option value="turn">本轮工具修改片段</option>}

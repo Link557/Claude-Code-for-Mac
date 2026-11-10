@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
+import { Markdown } from '../src/renderer/components/chat/Markdown'
 import { UserMessage } from '../src/renderer/components/chat/UserMessage'
 import { FileContext } from '../src/renderer/components/files/FileLink'
 import type { UiMessage } from '../src/shared/chat'
@@ -39,6 +40,18 @@ it('renders pasted citations inline and preserves the source for copying and edi
   expect(writeText).toHaveBeenCalledWith(text)
   fireEvent.click(screen.getByRole('button', { name: '编辑' }))
   expect(screen.getByRole('textbox')).toHaveProperty('value', text)
+})
+
+it('shows a Markdown image label without loading the remote resource', () => {
+  render(<UserMessage message={message} text="![项目图](https://img.example.com/report.png)" />)
+  expect(screen.getByText('项目图')).toBeTruthy()
+  expect(screen.queryByRole('img')).toBeNull()
+})
+
+it('leaves assistant bare URLs readable in full', () => {
+  const url = 'https://docs.example.com/guides/intro'
+  render(<Markdown text={url} />)
+  expect(screen.getByRole('link', { name: url }).getAttribute('href')).toBe(url)
 })
 
 it('preserves sent attachment references alongside rendered links', async () => {

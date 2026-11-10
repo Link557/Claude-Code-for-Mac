@@ -12,9 +12,17 @@ export async function gitDiff(cwd: string, source: string): Promise<string | nul
     if (error instanceof Error && 'stderr' in error && /^fatal: not a git repository\b/i.test(String(error.stderr))) return null
     throw error
   }
-  if (source === 'working') return run(['diff', '--no-ext-diff', '--no-textconv', 'HEAD', '--'])
+  const diff = ['diff', '--no-ext-diff', '--no-textconv']
+  if (source === 'working') {
+    try { return await run([...diff, 'HEAD', '--']) }
+    catch (error) {
+      // An initialized repository can have staged changes before its first commit.
+      if (!(error instanceof Error) || !('stderr' in error) || !/^fatal: bad revision 'HEAD'\s*$/i.test(String(error.stderr))) throw error
+      return run([...diff, '--cached', '--'])
+    }
+  }
   let base: string
   try { base = (await run(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])).trim() }
   catch { base = (await run(['show-ref', '--verify', '--quiet', 'refs/heads/main']).then(() => 'main').catch(() => 'master')) }
-  return run(['diff', '--no-ext-diff', '--no-textconv', base + '...HEAD', '--'])
+  return run([...diff, base + '...HEAD', '--'])
 }

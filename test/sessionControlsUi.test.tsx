@@ -28,7 +28,7 @@ it('shows a quiet Git notice without comparison controls outside a repository', 
   render(<SessionControlsPane sessionId="s" cwd="/project" active />)
   expect(await screen.findByText('当前目录未使用 Git')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
-  expect(screen.queryByRole('button', { name: '刷新' })).toBeNull()
+  expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
   expect(screen.queryByLabelText('比较来源')).toBeNull()
 })
 
@@ -41,4 +41,14 @@ it('collapses command errors and can retry into the empty state', async () => {
   fireEvent.click(screen.getByRole('button', { name: '重试' }))
   expect(await screen.findByText('暂无改动')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
+})
+
+it('refreshes a directory that becomes a Git repository while the pane is open', async () => {
+  const diff = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('')
+  window.desk = { files: { diff } } as unknown as Window['desk']
+  render(<SessionControlsPane sessionId="s" cwd="/workspace" active />)
+  expect(await screen.findByText('当前目录未使用 Git')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '刷新' }))
+  expect(await screen.findByText('暂无改动')).toBeTruthy()
+  expect(screen.queryByText('当前目录未使用 Git')).toBeNull()
 })
