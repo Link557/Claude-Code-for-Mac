@@ -112,6 +112,28 @@ button {
   -webkit-app-region: no-drag;
 }
 
+.chat-navigation-glass {
+  position: relative;
+  border: 1px solid var(--line);
+  background-color: var(--card);
+  background-color: color-mix(in srgb, var(--card) var(--chat-glass-opacity, 84%), transparent);
+  background-clip: padding-box;
+  backdrop-filter: blur(var(--chat-glass-blur, 16px)) saturate(70%);
+  box-shadow: var(--shadow-card);
+  color: var(--fg);
+  font-family: var(--font-serif);
+}
+.chat-navigation-glass::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(145deg, light-dark(#fffffff5, #ffffffa0), light-dark(#ffffff9c, #ffffff46) 28%, transparent 56%, light-dark(#0003, #0009) 85%, light-dark(#0002, #ffffff32));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
 .chat-history-rail {
   position: absolute;
   inset: var(--chat-reading-edge) 0 54px;

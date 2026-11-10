@@ -6,12 +6,83 @@ import { QuotaCrab } from '../src/renderer/components/usage/QuotaCrab'
 import { UsageNav } from '../src/renderer/components/usage/UsageNav'
 import { UsageCharts } from '../src/renderer/components/usage/UsageCharts'
 import { useUsage } from '../src/renderer/usageStore'
+import { startUsagePolling } from '../src/renderer/usagePolling'
 import { useDesk } from '../src/renderer/store'
 import type { UsageOverview } from '../src/shared/usageAnalytics'
 const overview: UsageOverview = { account: { key: 'a', email: 'a@test.com', organization: null, subscriptionType: 'pro' }, profile: { name: 'A', avatar: null }, usage: { available: true, subscriptionType: 'pro', windows: [{ kind: 'five_hour', label: '5小时', percent: 20, resetsAt: null }, { kind: 'seven_day', label: '周', percent: 40, resetsAt: null }] }, updatedAt: 100 }
-beforeEach(() => { useUsage.setState({ overview: structuredClone(overview), error: null, loading: false, failures: 0, lastAttempt: 0 }); window.desk = { usage: { overview: vi.fn().mockResolvedValue(overview), saveProfile: vi.fn() } } as unknown as Window['desk'] })
+beforeEach(() => { useUsage.setState({ scope: '', overview: structuredClone(overview), error: null, loading: false, failures: 0, lastAttempt: 0 }); window.desk = { usage: { overview: vi.fn().mockResolvedValue(overview), saveProfile: vi.fn() } } as unknown as Window['desk'] })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 describe('usage navigation and shared requests', () => {
+  const projects = [
+    { id: 'a', name: 'A', path: '/a', addedAt: 0, collapsed: false },
+    { id: 'b', name: 'B', path: '/b', addedAt: 0, collapsed: false }
+  ]
+
+  it('starts polling the conversation project after five seconds, then follows project selection', async () => {
+    vi.useFakeTimers()
+    const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    useDesk.setState({ projects, selectedProjectId: 'a', view: { kind: 'session', sessionId: 's', projectId: 'b' } })
+    const stop = startUsagePolling()
+    try {
+      expect(useUsage.getState().scope).toBe('/b')
+      await vi.advanceTimersByTimeAsync(4999)
+      expect(window.desk.usage.overview).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(window.desk.usage.overview).toHaveBeenCalledWith('/b')
+      useDesk.setState({ view: { kind: 'new' } })
+      await useUsage.getState().refresh()
+      expect(window.desk.usage.overview).toHaveBeenLastCalledWith('/a')
+      expect(window.desk.usage.overview).toHaveBeenCalledTimes(2)
+    } finally {
+      stop()
+      visibility.mockRestore()
+    }
+  })
+
+  it('ignores superseded successes and failures after switching A to B to A', async () => {
+    let finishOldA!: (value: UsageOverview) => void
+    let failB!: (reason: Error) => void
+    let finishCurrent!: (value: UsageOverview) => void
+    window.desk.usage.overview = vi.fn()
+      .mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finishOldA = resolve }))
+      .mockImplementationOnce(() => new Promise<UsageOverview>((_resolve, reject) => { failB = reject }))
+      .mockImplementationOnce(() => new Promise<UsageOverview>(resolve => { finishCurrent = resolve }))
+    useDesk.setState({ projects, selectedProjectId: 'a', view: { kind: 'new' } })
+    const stop = startUsagePolling()
+    try {
+      const oldA = useUsage.getState().refresh()
+      useDesk.setState({ selectedProjectId: 'b' })
+      const oldB = useUsage.getState().refresh()
+      useDesk.setState({ selectedProjectId: 'a' })
+      const current = useUsage.getState().refresh()
+      expect(vi.mocked(window.desk.usage.overview).mock.calls).toEqual([['/a'], ['/b'], ['/a']])
+      finishOldA({ ...overview, profile: { name: '旧结果', avatar: null } })
+      failB(new Error('旧请求失败'))
+      await Promise.all([oldA, oldB])
+      expect(useUsage.getState()).toMatchObject({ scope: '/a', overview: null, error: null, loading: true, failures: 0 })
+      finishCurrent(overview)
+      await current
+      expect(useUsage.getState()).toMatchObject({ overview, loading: false })
+    } finally {
+      stop()
+    }
+  })
+
+  it('saves the current project profile without applying the response to another project', async () => {
+    let finish!: (profile: UsageOverview['profile']) => void
+    const profile = { name: '更新的头像', avatar: null }
+    window.desk.usage.saveProfile = vi.fn(() => new Promise<UsageOverview['profile']>(resolve => { finish = resolve }))
+    useUsage.getState().setScope('/a')
+    await useUsage.getState().refresh()
+    const saving = useUsage.getState().saveProfile(profile)
+    expect(window.desk.usage.saveProfile).toHaveBeenCalledWith(overview.account.key, profile, '/a')
+    useUsage.getState().setScope('/b')
+    await useUsage.getState().refresh()
+    finish(profile)
+    await saving
+    expect(useUsage.getState().overview?.profile).toEqual(overview.profile)
+  })
+
   it('shows remaining windows on one entry and routes without changing session state', () => {
     render(<UsageNav />)
     expect(screen.getByText('5h 80% · 周 60%')).toBeTruthy()

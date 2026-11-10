@@ -7,52 +7,44 @@ interface State {
   error: string | null
   failures: number
   lastAttempt: number
+  scope: string
+  setScope(scope: string): void
   refresh(): Promise<void>
   saveProfile(profile: UsageProfile): Promise<void>
 }
-let pending: Promise<void> | null = null
+let pending: { scope: string; task: Promise<void> } | null = null
 let profileRevision = 0
 export const useUsage = create<State>((set, get) => ({
-  overview: null, loading: false, error: null, failures: 0, lastAttempt: 0,
+  overview: null, loading: false, error: null, failures: 0, lastAttempt: 0, scope: '',
+  setScope(scope) {
+    if (get().scope === scope) return
+    pending = null
+    set({ scope, overview: null, loading: false, error: null, failures: 0, lastAttempt: 0 })
+  },
   refresh() {
-    if (pending) return pending
+    const scope = get().scope
+    if (pending?.scope === scope) return pending.task
     set({ loading: true, lastAttempt: Date.now() })
     const revision = profileRevision
-    pending = window.desk.usage.overview().then(overview => {
+    const task = window.desk.usage.overview(scope || undefined).then(overview => {
+      if (pending?.task !== task) return
       const previous = get().overview
       const sameAccount = previous?.account.key === overview.account.key
       if (sameAccount && revision !== profileRevision) overview.profile = previous!.profile
       if (overview.usageError && sameAccount) { overview.usage = previous!.usage; overview.updatedAt = previous!.updatedAt }
       set({ overview, error: overview.usageError ?? null, failures: overview.usageError ? get().failures + 1 : 0 })
-    }, error => set({ error: String(error.message ?? error), failures: get().failures + 1 })).finally(() => { pending = null; set({ loading: false }) })
-    return pending
+    }, error => { if (pending?.task === task) set({ error: String(error.message ?? error), failures: get().failures + 1 }) }).finally(() => {
+      if (pending?.task === task) { pending = null; set({ loading: false }) }
+    })
+    pending = { scope, task }
+    return task
   },
   async saveProfile(profile) {
-    const previous = get().overview
-    if (!previous) return
-    const saved = await window.desk.usage.saveProfile(previous.account.key, profile)
+    const { scope, overview: previous } = get()
+    if (!previous) throw new Error('账户信息已变化，请刷新后重试')
+    const saved = await window.desk.usage.saveProfile(previous.account.key, profile, scope || undefined)
     profileRevision++
     const current = get().overview
-    if (current?.account.key === previous.account.key) set({ overview: { ...current, profile: saved } })
+    if (get().scope === scope && current?.account.key === previous.account.key) set({ overview: { ...current, profile: saved } })
   }
 }))
-
-/** One shared poll for sidebar and page while the window is visible (focus not required). Focus checks do not bypass backoff; coming back online does. */
-export function startUsagePolling(): () => void {
-  let stopped = false
-  // Let the model handshake start before the sidebar opens another CLI to fetch quota.
-  const firstPoll = Date.now() + 5000
-  const tick = (): void => {
-    if (stopped || document.hidden || Date.now() < firstPoll) return
-    const state = useUsage.getState()
-    const interval = Math.min(300000, 60000 * 2 ** Math.min(state.failures, 3))
-    if (!state.lastAttempt || Date.now() - state.lastAttempt >= interval) void state.refresh()
-  }
-  // Waking from sleep usually means the network was just restored: refresh right away instead of waiting out the backoff.
-  const online = (): void => { if (!stopped && !document.hidden && Date.now() >= firstPoll) void useUsage.getState().refresh() }
-  const timer = window.setInterval(tick, 5000)
-  window.addEventListener('focus', tick)
-  window.addEventListener('online', online)
-  document.addEventListener('visibilitychange', tick)
-  return () => { stopped = true; clearInterval(timer); window.removeEventListener('focus', tick); window.removeEventListener('online', online); document.removeEventListener('visibilitychange', tick) }
-}

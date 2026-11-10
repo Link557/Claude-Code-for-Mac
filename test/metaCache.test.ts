@@ -48,9 +48,16 @@ it('invalidates catalogs after user/project settings and environment changes wit
   vi.stubEnv('ANTHROPIC_MODEL', 'another-model')
   expect(await meta.cachedModels(project)).toBeNull()
   await meta.get(project)
-  expect(mocks.load).toHaveBeenCalledTimes(4)
+  vi.stubEnv('HTTPS_PROXY', 'http://proxy.example.invalid:8080')
+  expect(await meta.cachedModels(project)).toBeNull()
+  await meta.get(project)
+  vi.stubEnv('CLAUDE_CODE_SESSION_ID', 'unrelated-session')
+  await meta.get(project)
+  expect(mocks.load).toHaveBeenCalledTimes(5)
   for (const file of readdirSync(join(mocks.directory, 'model-catalog'))) {
-    expect(readFileSync(join(mocks.directory, 'model-catalog', file), 'utf8')).not.toContain('private-test-key')
+    const saved = readFileSync(join(mocks.directory, 'model-catalog', file), 'utf8')
+    expect(saved).not.toContain('private-test-key')
+    expect(saved).not.toContain('proxy.example.invalid')
   }
 })
 
@@ -116,6 +123,15 @@ it('clears stale disk data on empty authoritative response and retries immediate
   expect(await meta.cachedModels('/one')).toBeNull()
   expect((await meta.get('/one')).models[0].label).toBe('Recovered')
 })
+it('retains the last cached catalog and retries after a model catalog error', async () => {
+  mocks.load.mockResolvedValueOnce(init()).mockResolvedValueOnce({ ...init(), models: [], modelCatalogError: 'offline' }).mockResolvedValueOnce(init('Recovered'))
+  const initial = await meta.get('/one')
+  meta.invalidate()
+  expect(await meta.get('/one')).toMatchObject({ models: [], modelCatalogError: 'offline' })
+  expect(await meta.cachedModels('/one')).toEqual(initial.models)
+  expect((await meta.get('/one')).models[0].label).toBe('Recovered')
+})
+
 it('does not fail a model load when command publication throws', async () => {
   mocks.load.mockResolvedValue(init())
   await expect(meta.get('/one', () => { throw new Error('publication') })).resolves.toMatchObject({ models: [{ value: 'opus' }] })

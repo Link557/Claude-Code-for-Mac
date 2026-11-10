@@ -129,7 +129,7 @@ export class LiveSession {
           systemPrompt: { type: 'preset', preset: 'claude_code' },
           includePartialMessages: true,
           forwardSubagentText: true,
-          promptSuggestions: true,
+          promptSuggestions: store.read().settings.promptSuggestions !== false,
           // SDK 会话默认不返回思考文字（只有签名），界面就看不到思考过程；要求返回思考摘要
           extraArgs: { 'thinking-display': 'summarized', 'replay-user-messages': null },
           hooks: {

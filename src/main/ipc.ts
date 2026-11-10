@@ -41,25 +41,30 @@ function statistics(): UsageWorkerClient {
   return usageIndex ??= new UsageWorkerClient(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), join(app.getPath('userData'), 'usage-index.json'))
 }
 function profiles(): UsageProfiles { return new UsageProfiles(join(app.getPath('userData'), 'usage-profiles')) }
-let overviewRequest: Promise<UsageOverview> | null = null
-let activeAccountKey: string | null = null
-function overview(): Promise<UsageOverview> {
-  if (overviewRequest) return overviewRequest
-  overviewRequest = withUsageQuery(async q => {
+const overviewRequests = new Map<string, Promise<UsageOverview>>()
+const activeAccountKeys = new Map<string, string>()
+function overview(cwd = homedir()): Promise<UsageOverview> {
+  const pending = overviewRequests.get(cwd)
+  if (pending) return pending
+  const request = withUsageQuery(async q => {
     const identity = await q.accountInfo()
     const account = usageAccount(identity)
-    activeAccountKey = account.key
     const profile = await profiles().get(account)
     try {
       const usage = await readPlanUsage(q, identity)
-      // 睡眠唤醒、网络未就绪时接口可能"成功"但不带任何窗口；按失败处理，渲染端会保留上次结果并退避重试。
-      if (usage.available && !usage.windows.length) return { account, usage: null, usageError: '额度接口未返回数据', profile, updatedAt: Date.now() }
       return { account, usage, profile, updatedAt: Date.now() }
     } catch (error: any) {
       return { account, usage: null, usageError: String(error.message ?? error), profile, updatedAt: Date.now() }
     }
-  }).catch(error => { activeAccountKey = null; throw error }).finally(() => { overviewRequest = null })
-  return overviewRequest
+  }, cwd).then(result => {
+    activeAccountKeys.set(cwd, result.account.key)
+    return result
+  }, error => {
+    activeAccountKeys.delete(cwd)
+    throw error
+  }).finally(() => { overviewRequests.delete(cwd) })
+  overviewRequests.set(cwd, request)
+  return request
 }
 function broadcast(sessionId: string, event: ChatEvent): void {
   if (event.kind === 'result') void statistics().recordDuration(event.durationMs).catch(error => console.error('Usage statistics:', error))
@@ -188,10 +193,10 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void, fi
   })
 
   registerNamespace('usage', {
-    overview: () => overview(),
+    overview: (_e, cwd) => overview(cwd),
     stats: (_e, refresh) => refresh === true ? statistics().refresh() : statistics().get(),
-    saveProfile: (_e, key, profile) => {
-      if (key !== activeAccountKey) throw new Error('账户信息已变化，请刷新后重试')
+    saveProfile: (_e, key, profile, cwd = homedir()) => {
+      if (key !== activeAccountKeys.get(cwd)) throw new Error('账户信息已变化，请刷新后重试')
       return profiles().save(key, profile)
     }
   })

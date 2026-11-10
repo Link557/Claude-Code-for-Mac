@@ -40,6 +40,7 @@ export interface Settings {
   /** Desktop process retention only; never written to Claude Code settings. */
   retainedSessions?: number
   sessionIdleMinutes?: number
+  promptSuggestions?: boolean
   theme: Theme
   defaultModel: string
   defaultPermissionMode: PermissionMode

@@ -149,6 +149,19 @@ it('shows only desktop model defaults while retaining context settings', async (
   await screen.findByLabelText('自动压缩对话')
   expect(screen.queryByLabelText('安全检查标记消息时切换模型')).toBeNull()
 })
+it('defaults input suggestions to on and persists opt-out as a desktop setting', async () => {
+  const updateSettings = vi.fn(async patch => useDesk.setState(state => ({ settings: { ...state.settings!, ...patch } })))
+  useDesk.setState({ view: { kind: 'settings', tab: 'context' }, updateSettings })
+  render(<SettingsPage />)
+  const toggle = screen.getByRole('switch', { name: '请求输入建议' })
+  expect(toggle.getAttribute('aria-checked')).toBe('true')
+  fireEvent.click(toggle)
+  await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('false'))
+  expect(updateSettings).toHaveBeenCalledWith({ promptSuggestions: false })
+  expect(window.desk.meta.config).not.toHaveBeenCalled()
+  expect(window.desk.chat.reloadConfiguration).not.toHaveBeenCalled()
+})
+
 it('updates desktop interaction preferences without writing terminal config', async () => {
   const updateSettings = vi.fn().mockResolvedValue(undefined)
   useDesk.setState({ view: { kind: 'settings' }, updateSettings })

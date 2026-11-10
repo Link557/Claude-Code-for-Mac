@@ -2,11 +2,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { LiveSession } from '../src/main/live/LiveSession'
 import { Transcript } from '../src/main/transcript'
 import { PushQueue } from '../src/main/live/PushQueue'
-const sdk = vi.hoisted(() => ({ query: vi.fn(), allowBypass: false }))
+const sdk = vi.hoisted(() => ({ query: vi.fn(), allowBypass: false, promptSuggestions: undefined as boolean | undefined }))
 vi.mock('../src/main/sdk', () => ({ loadSdk: async () => sdk, claudeExecutable: () => undefined }))
-vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: sdk.allowBypass } }) }))
+vi.mock('../src/main/store', () => ({ read: () => ({ settings: { allowBypass: sdk.allowBypass, promptSuggestions: sdk.promptSuggestions } }) }))
 let session: LiveSession | undefined
-afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false })
+afterEach(() => { session?.close(); session = undefined; sdk.allowBypass = false; sdk.promptSuggestions = undefined })
 function setup() {
   let fast = false
   let blocked = false
@@ -86,6 +86,13 @@ it('keeps reading after result and publishes an ephemeral suggestion, clearing i
   await new Promise(r => setTimeout(r, 20))
   expect(session!.promptSuggestion).toBeNull()
 })
+it('opts out of requesting suggestions when the desktop setting is off', async () => {
+  sdk.promptSuggestions = false
+  setup()
+  await session!.start()
+  expect(sdk.query.mock.calls.at(-1)?.[0].options.promptSuggestions).toBe(false)
+})
+
 it('ignores suggestions for another session or after a failed result', async () => {
   const { query, events } = setup()
   await session!.start()

@@ -1,6 +1,7 @@
 /** Presentation only. The original record and its provenance stay intact. */
-export function commandNotice(text: string): string | null {
+export function commandNotice(text: string, requireWrapper = false): string | null {
   const wrapped = /^\s*<local-command-(stdout|stderr)>([\s\S]*?)<\/local-command-\1>\s*$/.exec(text)
+  if (requireWrapper && !wrapped) return null
   const body = (wrapped ? wrapped[2] : text).replace(/\x1b\[[0-9;]*m/g, '').trim()
   const model = /^Set model to\s+(.+)$/i.exec(body)
   if (model && wrapped?.[1] !== 'stderr') {

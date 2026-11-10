@@ -30,9 +30,9 @@ export const contract = {
     installationHelp: invoke<[]>()
   },
   usage: {
-    overview: invoke<[], UsageOverview>(),
+    overview: invoke<[cwd?: string], UsageOverview>(),
     stats: invoke<[refresh?: boolean], UsageAnalytics>(),
-    saveProfile: invoke<[accountKey: string, profile: UsageProfile], UsageProfile>()
+    saveProfile: invoke<[accountKey: string, profile: UsageProfile, cwd?: string], UsageProfile>()
   },
   workspace: {
     /** 明确关闭页面时销毁资源；组件卸载不等于关闭页面。 */

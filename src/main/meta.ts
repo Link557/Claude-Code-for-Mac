@@ -7,6 +7,7 @@ import { app } from 'electron'
 import type { CommandInfo, MetaInfo, ModelOption } from '../shared/types'
 import { readMetadata } from './metadataQuery'
 import { claudeExecutable } from './sdk'
+import { adoptLoginShellEnv, shouldAdopt } from './env'
 
 const TTL = 5 * 60_000
 const DISK_TTL = 7 * 24 * 60 * 60_000
@@ -23,6 +24,7 @@ async function configuration(): Promise<string> {
   return JSON.stringify([app.getVersion(), executable ?? null, fingerprint, process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')])
 }
 async function key(cwd: string): Promise<string> {
+  if (app.isPackaged) await adoptLoginShellEnv()
   const directory = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
   const settings = await Promise.all([
     join(directory, 'settings.json'), join(cwd, '.claude', 'settings.json'), join(cwd, '.claude', 'settings.local.json')
@@ -30,7 +32,7 @@ async function key(cwd: string): Promise<string> {
     try { return await readFile(path, 'utf8') }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ''; throw error }
   }))
-  const env = Object.entries(process.env).filter(([name]) => /^(ANTHROPIC_|CLAUDE_CODE_USE_|AWS_PROFILE$|CLOUD_ML_REGION$|ANTHROPIC_VERTEX_PROJECT_ID$)/.test(name)).sort(([a], [b]) => a.localeCompare(b))
+  const env = Object.entries(process.env).filter(([name]) => shouldAdopt(name)).sort(([a], [b]) => a.localeCompare(b))
   // Configuration can contain secrets: only its digest may be persisted in a cache key.
   const fingerprint = createHash('sha256').update(JSON.stringify([settings, env])).digest('hex')
   return JSON.stringify([cwd, await configuration(), fingerprint])

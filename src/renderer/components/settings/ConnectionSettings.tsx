@@ -23,7 +23,7 @@ export function ConnectionSettings({ cwd }: { cwd?: string }) {
   const [revision, setRevision] = useState(0)
   useEffect(() => {
     let active = true
-    setBusy(true); setError(null)
+    setBusy(true); setStatus(null); setError(null)
     void window.desk.connection.status(cwd).then(value => { if (active) setStatus(value) }, failure => {
       if (active) { setStatus(null); setError(errorText(failure)) }
     }).finally(() => { if (active) setBusy(false) })

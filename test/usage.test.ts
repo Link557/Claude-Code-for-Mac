@@ -37,6 +37,28 @@ it('does not fetch official quota for a configured gateway even when an official
   expect(hasOfficialQuotaRoute({ apiProvider: 'firstParty' }, { ANTHROPIC_BASE_URL: 'https://api.anthropic.com' })).toBe(true)
 })
 
+it.each([true, false])('retries an empty official quota response once (recovered: %s)', async recovered => {
+  vi.useFakeTimers()
+  try {
+    const empty = { subscription_type: 'pro', rate_limits_available: true, rate_limits: null }
+    const usage = vi.fn().mockResolvedValueOnce(empty)
+      .mockResolvedValueOnce(recovered ? { ...empty, rate_limits: { five_hour: win(15) } } : empty)
+    const q = {
+      request: async () => ({ response: { effective: { env: { ANTHROPIC_BASE_URL: 'https://api.anthropic.com' } }, sources: [] } }),
+      usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: usage
+    } as unknown as import('@anthropic-ai/claude-agent-sdk').Query
+    const result = readPlanUsage(q, { apiProvider: 'firstParty' }).then(value => ({ value }), error => ({ error }))
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(usage).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(usage).toHaveBeenCalledTimes(2)
+    if (recovered) expect(await result).toMatchObject({ value: { windows: [{ kind: 'five_hour', percent: 15 }] } })
+    else expect(await result).toEqual({ error: new Error('额度接口未返回数据') })
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 describe('toPlanUsage', () => {
   it('按 5 小时、每周、各模型每周的顺序列出有数据的窗口', () => {
     const r = {

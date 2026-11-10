@@ -17,7 +17,7 @@ export function TechnicalRecords({ messages }: { messages: UiMessage[] }) {
 }
 
 export function InternalNotice({ message }: { message: UiMessage }) {
-  const notice = commandNotice(textOf(message))
+  const notice = message.source === 'internal' ? commandNotice(textOf(message)) : null
   if (notice) return <CommandNotice text={notice} />
   const kind = internalNoticeKind(message)
   if (kind === 'command') return null

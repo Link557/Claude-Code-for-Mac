@@ -103,6 +103,11 @@ export function SettingsPage() {
       <SessionControlsPane sessionId={route.sessionId} cwd={cwd} active initialTab="rules" />
     </Section>}
     {tab === 'context' && <>
+      <Section title="下一条输入建议" description="会增加模型用量。新会话或重载后生效，受 CLI 设置限制。">
+        <Row label="请求输入建议">
+          <Toggle label="请求输入建议" value={settings.promptSuggestions ?? true} onChange={promptSuggestions => saveSettings({ promptSuggestions })} />
+        </Row>
+      </Section>
       <ClaudeConfigSettings key={cwd} cwd={cwd} groups={[{ title: '对话与回复', keys: CONFIG_GROUPS.context }]} searchable={false} />
     </>}
     {tab === 'notifications' && <>

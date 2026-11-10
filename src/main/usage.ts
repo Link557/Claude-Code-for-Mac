@@ -4,14 +4,11 @@ import type { AccountInfo, Query, SDKControlGetUsageResponse } from '@anthropic-
 import type { PlanUsage, UsageWindow } from '../shared/types'
 import { withIdleQuery } from './sdk'
 import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
+import { providerRoute } from './providerRoute'
 
 /** Gateway/cloud quota is not the signed-in Claude account's subscription quota. */
 export function hasOfficialQuotaRoute(account: AccountInfo, env: Record<string, unknown>): boolean {
-  if (account.apiProvider && account.apiProvider !== 'firstParty') return false
-  const base = env.ANTHROPIC_BASE_URL
-  if (typeof base !== 'string' || !base.trim()) return true
-  try { return new URL(base).origin === 'https://api.anthropic.com' }
-  catch { throw new Error('模型接入地址无效，请检查 Claude Code 配置') }
+  return providerRoute(account, env) === 'firstParty'
 }
 
 export async function readPlanUsage(q: Query, account: AccountInfo): Promise<PlanUsage> {
@@ -19,7 +16,12 @@ export async function readPlanUsage(q: Query, account: AccountInfo): Promise<Pla
   const config = await readConfigState(q)
   const env = { ...process.env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) }
   if (!hasOfficialQuotaRoute(account, env)) return { subscriptionType: null, available: false, windows: [] }
-  return toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const usage = toPlanUsage(await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }))
+    if (!usage.available || usage.windows.length) return usage
+    if (attempt === 0) await new Promise<void>(resolve => setTimeout(resolve, 2000))
+  }
+  throw new Error('额度接口未返回数据')
 }
 
 type Window = { utilization: number | null; resets_at: string | null } | null | undefined
@@ -44,9 +46,9 @@ export function toPlanUsage(r: SDKControlGetUsageResponse): PlanUsage {
  * CLI sessions disable nonessential traffic. Keep this override inside the
  * short-lived query, with telemetry, hooks and tool/MCP execution disabled.
  * The CLI treats even the string "0" as enabled: use an empty string. */
-export function withUsageQuery<T>(fn: (q: Query) => Promise<T>): Promise<T> {
+export function withUsageQuery<T>(fn: (q: Query) => Promise<T>, cwd = homedir()): Promise<T> {
   return withIdleQuery({
-    cwd: homedir(), tools: [], mcpServers: {}, strictMcpConfig: true,
+    cwd, tools: [], mcpServers: {}, strictMcpConfig: true,
     settings: { disableAllHooks: true, env: {
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '',
       DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_AUTOUPDATER: '1'

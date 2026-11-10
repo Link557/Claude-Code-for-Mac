@@ -1,6 +1,8 @@
-import { afterAll, expect, it, vi } from 'vitest'
+import { homedir } from 'node:os'
+import { afterAll, beforeAll, expect, it, vi } from 'vitest'
 import { contract, invokeChannels, type DeskApi } from '../src/shared/ipc/contract'
 import { validators } from '../src/main/ipc/validators'
+import type { UsageOverview, UsageProfile } from '../src/shared/usageAnalytics'
 
 const electron = vi.hoisted(() => ({
   handlers: new Map<string, unknown>(),
@@ -27,15 +29,60 @@ vi.mock('electron', () => ({
 }))
 vi.mock('node-pty', () => ({ spawn: vi.fn() }))
 vi.mock('../src/main/usageWorkerClient', () => ({ UsageWorkerClient: class {} }))
+const usage = vi.hoisted(() => ({ query: vi.fn(), save: vi.fn() }))
+vi.mock('../src/main/usage', async original => ({
+  ...await original<typeof import('../src/main/usage')>(),
+  withUsageQuery: usage.query
+}))
+vi.mock('../src/main/usageProfile', async original => {
+  const profiles = await original<typeof import('../src/main/usageProfile')>()
+  return { ...profiles, UsageProfiles: class { get = profiles.defaultProfile; save = usage.save } }
+})
 
 afterAll(async () => { (await import('../src/main/ipc')).chats.closeAll() })
 
-it('registers every invoke channel in the contract exactly once', async () => {
+beforeAll(async () => {
   const { registerIpc } = await import('../src/main/ipc')
   const { registerWorkspaceIpc } = await import('../src/main/workspace')
   registerIpc(null)
   registerWorkspaceIpc()
+})
+
+it('registers every invoke channel in the contract exactly once', () => {
   expect([...electron.handlers.keys()].sort()).toEqual(invokeChannels().sort())
+})
+
+it('deduplicates quota per project and authorizes avatar saves only for that project account', async () => {
+  const overview = electron.handlers.get('usage:overview') as (event: unknown, cwd?: string) => Promise<UsageOverview>
+  const save = electron.handlers.get('usage:saveProfile') as (event: unknown, key: string, profile: UsageProfile, cwd?: string) => Promise<UsageProfile>
+  const projectA = '/quota/a', projectB = '/quota/b'
+  const profile = { name: '本机资料', avatar: null }
+  let finishA!: () => void
+  const waiting = new Promise<void>(resolve => { finishA = resolve })
+  usage.query.mockImplementation(async (read, cwd: string) => {
+    if (cwd === projectA) await waiting
+    return read({ accountInfo: async () => ({ apiProvider: 'bedrock', email: cwd + '@example.invalid' }) })
+  })
+  usage.save.mockResolvedValue(profile)
+
+  const first = overview({}, projectA)
+  expect(overview({}, projectA)).toBe(first)
+  const b = await overview({}, projectB)
+  expect(usage.query).toHaveBeenCalledTimes(2)
+  finishA()
+  const a = await first
+  expect(a.account.key).not.toBe(b.account.key)
+  await expect(save({}, b.account.key, profile, projectB)).resolves.toEqual(profile)
+  expect(() => save({}, a.account.key, profile, projectB)).toThrow('账户信息已变化')
+
+  usage.query.mockRejectedValueOnce(new Error('offline'))
+  await expect(overview({}, projectA)).rejects.toThrow('offline')
+  expect(() => save({}, a.account.key, profile, projectA)).toThrow('账户信息已变化')
+  await expect(save({}, b.account.key, profile, projectB)).resolves.toEqual(profile)
+
+  const home = await overview({})
+  expect(usage.query).toHaveBeenLastCalledWith(expect.any(Function), homedir())
+  await expect(save({}, home.account.key, profile)).resolves.toEqual(profile)
 })
 
 it('builds the preload api from the contract', async () => {
@@ -86,6 +133,7 @@ it('normalizes optional and loose arguments the way handlers used to', () => {
   const options = { model: null, mode: 'default', effort: null, extra: 1 }
   expect(validators['chat:send'](['s', '/p', 'hi', options])).toEqual(['s', '/p', 'hi', { model: null, mode: 'default', effort: null }, []])
   expect(validators['meta:get']([null])).toEqual([undefined])
+  expect(validators['settings:set']([{ promptSuggestions: false }])).toEqual([{ promptSuggestions: false }])
   expect(validators['skills:list']([''])).toEqual([null])
   expect(validators['chat:mcp'](['', '/p'])).toEqual([null, '/p'])
   expect(validators['chat:setModel'](['s'])).toEqual(['s', null])

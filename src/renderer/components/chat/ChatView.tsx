@@ -329,7 +329,7 @@ function Message({
   onEdit?(text: string): Promise<void>
 }) {
   if (message.role === 'notice') {
-    const notice = message.source !== 'human' && message.source !== 'external' ? commandNotice(blockText(message.blocks)) : null
+    const notice = message.source !== 'human' && message.source !== 'external' ? commandNotice(blockText(message.blocks), message.source !== 'internal') : null
     if (notice) return <CommandNotice text={notice} />
     if (isInterruptionNotice(message)) return <div className="my-3 text-[13px] text-fg3">已停止</div>
     if (message.source === 'internal') return <InternalNotice message={message} />
