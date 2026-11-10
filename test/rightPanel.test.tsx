@@ -96,3 +96,21 @@ it('uses a distinct color for each Roman page count', () => {
   }
   expect(colors.size).toBe(6)
 })
+
+it('keeps the three toolbar controls at 32px with 4px spacing and a Windows shortcut', () => {
+  const userAgent = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Windows')
+  try {
+    render(<><RightPanel sessionId="test" projectId="p" /><RightPanelToggle /></>)
+    const add = screen.getByRole('button', { name: '新建侧栏页面' })
+    const expand = screen.getByRole('button', { name: '展开侧栏页面' })
+    const toggle = screen.getByRole('button', { name: '收起右栏（Ctrl+Shift+B）' })
+    expect(add.className).toContain('session-toolbar-button')
+    expect(expand.className).toContain('session-toolbar-button')
+    expect(toggle.className).toContain('session-toolbar-button')
+    expect(add.parentElement?.className).toContain('gap-1')
+    fireEvent.click(expand)
+    expect(screen.getByRole('button', { name: '还原侧栏宽度' })).toBeTruthy()
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: '展开右栏（Ctrl+Shift+B）' })).toBeTruthy()
+  } finally { userAgent.mockRestore() }
+})

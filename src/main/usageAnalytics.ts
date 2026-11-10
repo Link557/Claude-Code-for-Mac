@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs'
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
-import { join, sep } from 'node:path'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { setImmediate } from 'node:timers/promises'
 import type { TokenUsage } from '../shared/chat'
@@ -98,46 +98,39 @@ export class UsageIndexer {
   private async scan(): Promise<UsageAnalytics> {
     await this.load()
     const next: Record<string, FileIndex> = {}
-    let readIssues = 0
     const walk = async (dir: string): Promise<void> => {
       let entries
       try { entries = await readdir(dir, { withFileTypes: true }) }
       catch (error: any) {
-        if (error.code !== 'ENOENT') {
-          readIssues++
-          for (const [path, cached] of Object.entries(this.cache.files)) if (path.startsWith(dir + sep)) next[path] = cached
-        }
+        if (error.code !== 'ENOENT') throw error
         return
       }
       for (const entry of entries) {
         const path = join(dir, entry.name)
         if (entry.isDirectory()) { await walk(path); continue }
         if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue
-        try {
-          const info = await stat(path), old = this.cache.files[path]
-          if (old && old.size === info.size && old.mtime === info.mtimeMs) { next[path] = old; continue }
-          const file: FileIndex = { size: info.size, mtime: info.mtimeMs, records: [], longestTaskMs: null, issues: 0 }
-          const stream = createReadStream(path, { encoding: 'utf8' })
-          const lines = createInterface({ input: stream, crlfDelay: Infinity })
-          let count = 0
-          for await (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const parsed = extractUsage(JSON.parse(line))
-              if (parsed.record) file.records.push(parsed.record)
-              if (parsed.duration !== undefined) file.longestTaskMs = Math.max(file.longestTaskMs ?? 0, parsed.duration)
-              if (parsed.invalid) file.issues++
-            } catch { file.issues++ }
-            if (++count % 300 === 0) await setImmediate()
-          }
-          next[path] = file
-        } catch { readIssues++; if (this.cache.files[path]) next[path] = this.cache.files[path] }
+        const info = await stat(path), old = this.cache.files[path]
+        if (old && old.size === info.size && old.mtime === info.mtimeMs) { next[path] = old; continue }
+        const file: FileIndex = { size: info.size, mtime: info.mtimeMs, records: [], longestTaskMs: null, issues: 0 }
+        const stream = createReadStream(path, { encoding: 'utf8' })
+        const lines = createInterface({ input: stream, crlfDelay: Infinity })
+        let count = 0
+        for await (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = extractUsage(JSON.parse(line))
+            if (parsed.record) file.records.push(parsed.record)
+            if (parsed.duration !== undefined) file.longestTaskMs = Math.max(file.longestTaskMs ?? 0, parsed.duration)
+            if (parsed.invalid) file.issues++
+          } catch { file.issues++ }
+          if (++count % 300 === 0) await setImmediate()
+        }
+        next[path] = file
       }
     }
     await walk(join(this.root, 'projects'))
     this.cache.files = next
     const value = aggregateUsage(Object.values(next))
-    value.issues += readIssues
     if (this.cache.longestRecordedTaskMs !== null) value.longestTaskMs = Math.max(value.longestTaskMs ?? 0, this.cache.longestRecordedTaskMs)
     await mkdir(join(this.cachePath, '..'), { recursive: true })
     await writeFile(this.cachePath + '.tmp', JSON.stringify(this.cache))

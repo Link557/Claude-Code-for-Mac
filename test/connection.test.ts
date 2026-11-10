@@ -1,15 +1,37 @@
-import { expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ dialog: {}, shell: {} }))
 const sdk = vi.hoisted(() => ({ claudeRuntime: vi.fn(), withIdleQuery: vi.fn() }))
+const execution = vi.hoisted(() => ({ auth: '{"loggedIn":true,"apiProvider":"firstParty"}', failAuth: false }))
 vi.mock('../src/main/sdk', () => sdk)
 vi.mock('../src/main/systemProxy', () => ({ readSystemProxy: async () => ({}), proxyEnvironment: (_proxy: unknown, env: unknown) => env }))
 vi.mock('../src/main/env', () => ({ adoptLoginShellEnv: async () => {} }))
 vi.mock('node:child_process', () => ({
-  execFile: (_file: string, args: string[], _options: unknown, done: (error: null, output: { stdout: string }) => void) => {
-    done(null, { stdout: args[0] === '--version' ? '2.1.301' : '{"loggedIn":true,"apiProvider":"firstParty"}' })
+  execFile: (_file: string, args: string[], _options: unknown, done: (error: Error | null, output: { stdout: string }) => void) => {
+    if (args[0] !== '--version' && execution.failAuth) return done(new Error('auth timeout'), { stdout: '' })
+    done(null, { stdout: args[0] === '--version' ? '2.1.301' : execution.auth })
   }
 }))
-import { connectionStatus, parseAuthentication, posixLoginCommand, powershellLoginCommand, powershellResumeCommand } from '../src/main/connection'
+import { connectionStatus, parseAuthentication, posixLoginCommand, powershellLoginCommand } from '../src/main/connection'
+
+beforeEach(() => { execution.auth = '{"loggedIn":true,"apiProvider":"firstParty"}'; execution.failAuth = false; vi.clearAllMocks() })
+
+it('leaves authentication unknown when the CLI auth status check fails', async () => {
+  sdk.claudeRuntime.mockReturnValue({ path: 'claude.exe', source: 'installed' })
+  execution.failAuth = true
+  const status = await connectionStatus('/test-project')
+  expect(status).toMatchObject({ state: 'ready', loggedIn: null, provider: null })
+  expect(status.error).toContain('登录状态检测失败')
+  expect(sdk.withIdleQuery).not.toHaveBeenCalled()
+})
+
+it('preserves signed-out authentication if the later provider probe fails', async () => {
+  sdk.claudeRuntime.mockReturnValue({ path: 'claude.exe', source: 'installed' })
+  execution.auth = '{"loggedIn":false,"authMethod":"none"}'
+  sdk.withIdleQuery.mockRejectedValueOnce(new Error('provider failed'))
+  const status = await connectionStatus('/test-project')
+  expect(status).toMatchObject({ state: 'ready', loggedIn: false, provider: null })
+  expect(status.error).toContain('检查项目配置')
+})
 
 it('reports a project probe failure without returning SDK credentials or a stale provider', async () => {
   sdk.claudeRuntime.mockReturnValue({ path: 'claude.exe', source: 'installed' })
@@ -37,7 +59,4 @@ it('distinguishes signed out, third-party and invalid responses', () => {
 })
 it('quotes the chosen executable as a literal PowerShell argument', () => {
   expect(powershellLoginCommand("C:\\O'Brien $(bad)\\claude.exe")).toBe("& 'C:\\O''Brien $(bad)\\claude.exe' auth login")
-})
-it('quotes the project and session without PowerShell interpolation', () => {
-  expect(powershellResumeCommand("C:\\O'Brien\\claude.exe", "C:\\中文 $(whoami)\\project's", 'session-id')).toBe("Set-Location -LiteralPath 'C:\\中文 $(whoami)\\project''s'\r\n& 'C:\\O''Brien\\claude.exe' --resume 'session-id'")
 })

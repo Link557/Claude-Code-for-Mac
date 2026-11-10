@@ -135,6 +135,8 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'connection:pickExecutable': args(),
   'connection:login': args(),
   'connection:installationHelp': args(),
+  'connection:install': args(),
+  'connection:refreshRuntime': args(),
 
   'projects:list': args(),
   'projects:pickFolder': args(),
@@ -211,7 +213,6 @@ export const validators: { [C in InvokeChannel]: Validator<ArgsOf<C>> } = {
   'chat:setEffort': args(text('id'), arg('effort', effortLevel.nullish().transform(value => value ?? null))),
   'chat:respond': args(text('id'), text('requestId'), decision),
   'chat:checkExternal': args(text('id'), text('path')),
-  'chat:handoffToCli': args(text('id'), text('path')),
   'chat:reload': args(text('id'), text('path')),
   'chat:context': args(text('id'), text('path'), nullableModel()),
   'chat:mcp': args(nullableText('id'), text('path')),

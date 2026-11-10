@@ -8,6 +8,8 @@ import { errorText } from '../../ipcError'
 import { useModelCatalog } from '../newSession/useModelCatalog'
 import { Crab } from '../newSession/Crab'
 import { WindowPin } from '../ui/WindowPin'
+import { CliInstallCard } from '../connection/CliInstallCard'
+import { useCliConnection } from '../connection/useCliConnection'
 import '../../styles/welcome.css'
 
 /** A local draft: neither theme previews nor model choices write CLI or app settings. */
@@ -25,6 +27,7 @@ export function WelcomePage({ showWindowPin = false }: { showWindowPin?: boolean
   const dialog = useRef<HTMLDivElement>(null)
   // Defaults are global. Read the user-directory catalog, not a project's overrides.
   const { models, loading, error, cached, retry } = useModelCatalog(home || undefined)
+  const cli = useCliConnection(home || undefined)
   const model = models.find(item => item.value === modelValue || item.resolvedModel === modelValue)
   const confirmed = !loading && !error && !cached
   const supportedEffort = effort && model?.efforts.includes(effort) ? effort : null
@@ -115,6 +118,7 @@ export function WelcomePage({ showWindowPin = false }: { showWindowPin?: boolean
         </section>}
         {step === 3 && <section className="welcome-defaults">
           <h1 id="welcome-title">对话偏好</h1>
+          <CliInstallCard status={cli.status} checking={cli.checking} loadError={cli.error} onRefresh={cli.refresh} />
           <div className="welcome-default-grid">
             <div className="welcome-control">
               <label htmlFor="welcome-model">默认模型</label>

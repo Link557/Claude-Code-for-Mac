@@ -76,7 +76,7 @@ export function formatUsageTokens(n: number): string {
   return n.toLocaleString('zh-CN')
 }
 
-/** Aggregate raw counters first so cache hit rate is token-weighted. Input includes cache reads/writes. */
+/** Aggregate raw counters first so cache hit rate is token-weighted. */
 export function usageInRange(days: DailyUsage[], start?: string, end?: string, model: UsageModelFilter = 'total') {
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
   for (const day of days) {
@@ -86,5 +86,5 @@ export function usageInRange(days: DailyUsage[], start?: string, end?: string, m
     for (const key of ['input', 'output', 'cacheRead', 'cacheWrite'] as const) usage[key] += counters[key]
   }
   const input = usage.input + usage.cacheRead + usage.cacheWrite
-  return { ...usage, input, total: input + usage.output, hitRate: input ? Math.round(usage.cacheRead / input * 1000) / 10 : null }
+  return { ...usage, total: input + usage.output, hitRate: input ? Math.round(usage.cacheRead / input * 1000) / 10 : null }
 }

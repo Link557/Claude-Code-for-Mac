@@ -9,7 +9,7 @@ const TIMEOUT = 15_000
 interface Entry { cwd: string; configuration: string; snapshot: CommandCatalogSnapshot; attempt: number; generation: number; controller?: AbortController }
 interface Dependencies {
   directory(): string
-  configuration(): string
+  configuration(cwd: string): string
   load(cwd: string, signal: AbortSignal, configuration: string): Promise<CommandInfo[]>
   publish(snapshot: CommandCatalogSnapshot): void
   now?(): number
@@ -27,7 +27,7 @@ export class CommandCatalog {
   private now(): number { return this.deps.now?.() ?? Date.now() }
   private key(cwd: string, configuration: string): string { return JSON.stringify([cwd, configuration]) }
   private filename(key: string): string { return join(this.deps.directory(), createHash('sha256').update(key).digest('hex') + '.json') }
-  private entry(cwd: string, configuration = this.deps.configuration()): Entry {
+  private entry(cwd: string, configuration = this.deps.configuration(cwd)): Entry {
     const key = this.key(cwd, configuration)
     let entry = this.entries.get(key)
     if (entry) return entry
@@ -44,7 +44,7 @@ export class CommandCatalog {
   }
   private emit(entry: Entry, patch: Partial<CommandCatalogSnapshot>): void {
     entry.snapshot = { ...entry.snapshot, ...patch, revision: ++this.revision }
-    if (!this.disposed && entry.configuration === this.deps.configuration()) this.deps.publish(structuredClone(entry.snapshot))
+    if (!this.disposed && entry.configuration === this.deps.configuration(entry.cwd)) this.deps.publish(structuredClone(entry.snapshot))
   }
   get(cwd: string, force = false): CommandCatalogSnapshot {
     const entry = this.entry(cwd)
@@ -60,15 +60,14 @@ export class CommandCatalog {
     return (commands) => {
       const current = this.entries.get(this.key(cwd, entry.configuration))
       const fresh = entry.snapshot.status === 'ready' && entry.snapshot.updatedAt <= this.now() && this.now() - entry.snapshot.updatedAt < TTL
-      if (this.disposed || current !== entry || entry.configuration !== this.deps.configuration() || entry.generation !== generation || entry.controller || fresh) return
+      if (this.disposed || current !== entry || entry.configuration !== this.deps.configuration(cwd) || entry.generation !== generation || entry.controller || fresh) return
       this.accept(entry, commands)
     }
   }
   /** 会话在创建时捕获配置，防止旧可执行文件的迟到事件污染新目录。 */
-  publisher(cwd: string): (commands: CommandInfo[]) => void {
-    const configuration = this.deps.configuration()
+  publisher(cwd: string, configuration = this.deps.configuration(cwd)): (commands: CommandInfo[]) => void {
     return (commands) => {
-      if (this.disposed || configuration !== this.deps.configuration()) return
+      if (this.disposed || configuration !== this.deps.configuration(cwd)) return
       const entry = this.entry(cwd, configuration)
       entry.generation++
       entry.controller?.abort(); entry.controller = undefined
@@ -99,7 +98,7 @@ export class CommandCatalog {
       controller.signal.addEventListener('abort', () => reject(new Error('命令目录查询已取消')), { once: true })
       timer = setTimeout(() => { reject(new Error('项目命令加载超时，请重试')); controller.abort() }, TIMEOUT)
     })
-    const current = (): boolean => !this.disposed && entry.generation === generation && entry.configuration === this.deps.configuration()
+    const current = (): boolean => !this.disposed && entry.generation === generation && entry.configuration === this.deps.configuration(entry.cwd)
     void Promise.race([Promise.resolve().then(() => { if (controller.signal.aborted) throw new Error('查询已取消'); return this.deps.load(entry.cwd, controller.signal, entry.configuration) }), cancelled]).then(
       (commands) => { if (current()) this.accept(entry, commands) },
       (error) => { if (current()) this.emit(entry, { status: 'error', error: error instanceof Error ? error.message : String(error) }) }

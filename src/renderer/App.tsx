@@ -4,6 +4,7 @@ import { PanelLeft, SquarePen } from 'lucide-react'
 import { cancelFirstSend, isFirstSendTarget, syncFirstSend } from './motion/firstSend'
 import { finishSplash } from './motion/splash'
 import { refreshSessionsInBackground, useDesk } from './store'
+import { errorText } from './ipcError'
 import { useChat } from './chatStore'
 import { usePanel } from './panelStore'
 import { LEFT, useLayout } from './layoutStore'
@@ -17,7 +18,6 @@ import { SkillsPage } from './components/skills/SkillsPage'
 import { startUsagePolling } from './usagePolling'
 import { SettingsPage } from './components/settings/SettingsPage'
 import { ChatView } from './components/chat/ChatView'
-import { CliHandoff } from './components/chat/CliHandoff'
 import { RightPanel, RightPanelToggle } from './components/right/RightPanel'
 import { ResizeHandle } from './components/ui/ResizeHandle'
 import { AddProjectDialog } from './components/dialogs/AddProjectDialog'
@@ -102,7 +102,12 @@ export function App() {
 
   // 回到窗口时刷新会话列表（可能在终端或 VS Code 里有新对话）
   useEffect(() => {
-    const onFocus = (): void => refreshSessionsInBackground()
+    const onFocus = (): void => {
+      refreshSessionsInBackground()
+      void window.desk.connection.refreshRuntime?.().catch(error => {
+        useDesk.setState({ actionError: `检测本机 CLI 失败：${errorText(error)}` })
+      })
+    }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
@@ -155,7 +160,6 @@ export function App() {
           )}
           {view.kind !== 'settings' && (
             <div className={`ml-auto flex items-center gap-3 ${rightOpen ? 'pr-3' : 'pr-16'}`}>
-              {windows && view.kind === 'session' && <CliHandoff key={view.sessionId} sessionId={view.sessionId} projectId={view.projectId} />}
               {view.kind === 'session' && <SessionSummary sessionId={view.sessionId} projectId={view.projectId} />}
             </div>
           )}

@@ -77,6 +77,7 @@ export class Transcript {
   private finalPositions = new Map<string, number[]>()
   private partialJson = new Map<ToolBlock, string>()
   private tools = new Map<string, ToolBlock>()
+  private skillReceipts = new Map<string | null, Set<string>>()
   private changed = new Set<UiMessage>()
 
   /** 取出自上次调用以来有变化的消息 */
@@ -211,6 +212,7 @@ export class Transcript {
   }
 
   private applyAssistant(message: Json, parent: string | null, uuid?: unknown): void {
+    this.skillReceipts.delete(parent)
     // 本地命令的输出是一条不经过模型的合成消息
     if (!parent && message.model === '<synthetic>' && this.pendingCommand) {
       const content = Array.isArray(message.content) ? (message.content as Json[]) : []
@@ -275,9 +277,28 @@ export class Transcript {
           if (!tool) continue
           const images = toolImages([...(Array.isArray(c.content) ? c.content : []), ...(singleResult ? content : [])])
           tool.result = { text: resultText(c.content), isError: c.is_error === true, ...(images.length ? { images } : {}) }
+          if (tool.name === 'Skill' && !tool.result.isError && /^Launching skill:\s*\S/.test(tool.result.text)) {
+            const receipts = this.skillReceipts.get(parent) ?? new Set<string>()
+            receipts.add(tool.id)
+            this.skillReceipts.set(parent, receipts)
+          }
           for (const msg of this.messages) if (msg.blocks.includes(tool)) this.changed.add(msg)
         } else if (c.type === 'text' && typeof c.text === 'string') texts.push(c.text)
       }
+    }
+    // The CLI emits the loaded skill as a separate synthetic user message. Only
+    // hide a uniquely associated successful invocation, never user input/errors.
+    const text = texts.join('\n')
+    const receipts = this.skillReceipts.get(parent)
+    const sourceId = typeof raw.sourceToolUseID === 'string' ? raw.sourceToolUseID : null
+    if (!(typeof raw.uuid === 'string' && this.submissions.has(raw.uuid))
+      && (raw.isSynthetic === true || (raw.isMeta === true && sourceId !== null)) && raw.is_error !== true && raw.error == null
+      && /^Base directory for this skill:/.test(text)
+      && (sourceId ? receipts?.has(sourceId) : receipts?.size === 1)) {
+      if (sourceId) receipts!.delete(sourceId)
+      else receipts!.clear()
+      if (!receipts!.size) this.skillReceipts.delete(parent)
+      return
     }
     if (parent) {
       if (texts.length) {
@@ -294,21 +315,21 @@ export class Transcript {
     this.seenUserEvents.add(uuid)
     // 本地提交原文优先于回声正文，包括 CLI 添加的包装标签。
     const source = submitted ? 'human' : sdkMessageSource(raw)
-    const text = submitted?.text ?? texts.join('\n')
-    if (!text) return
+    const displayText = submitted?.text ?? text
+    if (!displayText) return
     if (source === 'human') {
       if (submitted) this.time = submitted.time
-      this.addTyped(text, uuid)
+      this.addTyped(displayText, uuid)
       return
     }
     // 只有已确认的内部消息才解释内部文本格式。未知来源始终原样保留。
     if (source === 'internal' && raw.isCompactSummary !== true) {
-      const output = COMMAND_OUTPUT.exec(text.trim())
+      const output = COMMAND_OUTPUT.exec(displayText.trim())
       if (output) { this.addCommand(output[1] === 'stderr' ? output[0] : output[2]); return }
-      const command = COMMAND_NAME.exec(text)
+      const command = COMMAND_NAME.exec(displayText)
       if (command) {
         this.flushCommand()
-        this.pendingCommand = { name: command[1], args: COMMAND_ARGS.exec(text)?.[1].trim() ?? '' }
+        this.pendingCommand = { name: command[1], args: COMMAND_ARGS.exec(displayText)?.[1].trim() ?? '' }
       }
     }
     const msg = this.ensure(uuid, 'notice', null)
@@ -316,7 +337,7 @@ export class Transcript {
     msg.source = source
     if (source === 'internal') {
       msg.internalKind = raw.isCompactSummary === true ? 'compact'
-        : COMMAND_NAME.test(text) ? 'command'
+        : COMMAND_NAME.test(displayText) ? 'command'
         : raw.isSynthetic === true || raw.is_error === true || raw.error != null ? 'notification'
         : raw.isMeta === true || raw.is_meta === true || raw.isVisibleInTranscriptOnly === true ? 'technical'
         : 'notification'
@@ -324,6 +345,6 @@ export class Transcript {
     msg.originKind = sdkOriginKind(raw)
     // 未知旧历史保留推定分组；实时未知事件不凭空开启真人轮次。
     msg.startsTurn = source === 'unknown' && mode === 'history'
-    msg.blocks = [{ kind: 'text', text }]
+    msg.blocks = [{ kind: 'text', text: displayText }]
   }
 }

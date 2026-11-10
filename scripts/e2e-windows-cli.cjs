@@ -1,6 +1,6 @@
 // Opt-in live integration: uses official authentication and small Haiku requests.
 // All file changes belong to a new temporary project; no user project is used.
-const { app, nativeTheme, clipboard } = require('electron')
+const { app, nativeTheme } = require('electron')
 const { execFileSync, execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const { randomUUID } = require('node:crypto')
@@ -29,7 +29,6 @@ process.env.CLAUDE_DESK_USERDATA = data
 process.env.CLAUDE_DESK_DEMO = JSON.stringify({ openSession: 0 })
 const timeout = setTimeout(() => { console.error('FAIL live desktop test timed out'); app.exit(1) }, 240000)
 app.once('browser-window-created', (_event, win) => {
-  win.show = () => {}; win.showInactive = () => {}
   win.webContents.on('console-message', (_event, details) => { if (details.level === 'error') console.error('RENDERER', details.message) })
   win.webContents.once('did-finish-load', async () => {
     const js = async code => {
@@ -83,17 +82,15 @@ app.once('browser-window-created', (_event, win) => {
       assert.equal(readFileSync(join(project, 'output.txt'), 'utf8').trim(), marker + '|NATIVE_WINDOWS_42')
       assert.ok(first.state.messages.some(m => m.blocks.some(b => b.kind === 'tool' && b.name === 'Write' && b.result && !b.result.isError)))
       assert.ok(first.approvals > 0, 'Expected explicit default-mode write approval')
-      await wait("document.body.innerText.includes('DESKTOP_DONE')&&!!document.querySelector('[aria-label=\"在 CLI 继续\"]:not(:disabled)')")
+      await wait("document.body.innerText.includes('DESKTOP_DONE')")
+      assert.equal(await js("!!document.querySelector('[aria-label=\"在 CLI 继续\"]')"), false)
       writeFileSync(resolve('.local/windows-v1-live-light.png'), (await win.capturePage()).toPNG())
       console.log(JSON.stringify({ stage: 'desktop-read-write', approvals: first.approvals, genuineTools: true }))
-      await click('在 CLI 继续')
-      await wait("document.body.innerText.includes('命令已复制')")
-      const command = await clipboard.readText()
-      assert.ok(command.includes(id) && command.includes(executable))
-      assert.equal((await snapshot()).live, false)
+      win.blur()
       const resume = JSON.parse((await promisify(execFile)(executable, [...cliArgs, '--resume', id, 'What exact content did you write to output.txt in the preceding desktop turn? Reply with that content followed by |CLI_BACK. Do not use tools.'], cliOptions)).stdout)
       assert.equal(resume.is_error, false); assert.ok(resume.result.includes(marker + '|NATIVE_WINDOWS_42|CLI_BACK'), resume.result)
-      assert.equal(await js(`window.desk.chat.checkExternal(${q(id)},${q(project)})`), true)
+      win.show(); win.focus()
+      await wait(`document.body.innerText.includes(${q(marker + '|NATIVE_WINDOWS_42|CLI_BACK')})`)
       console.log(JSON.stringify({ stage: 'cli-resumed-desktop-history', costUsd: resume.total_cost_usd }))
       // Send through the composer without manually reloading: backend must merge external history.
       await send('Repeat your immediately preceding reply exactly, including its suffix. Do not use tools.')

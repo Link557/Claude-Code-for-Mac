@@ -12,7 +12,7 @@ import type { CommandInfo } from '../../shared/types'
 import type { BtwTurn, ChatEvent, ChatSnapshot, ContextUsage, Decision, QueueAction, QueuedMessage, McpStatus, SessionOptions } from '../../shared/chat'
 import { peekContext } from '../context'
 import { loadSdk, withIdleQuery } from '../sdk'
-import type { McpServerStatus, Query } from '@anthropic-ai/claude-agent-sdk'
+import type { McpServerStatus, Query, SessionMessage } from '@anthropic-ai/claude-agent-sdk'
 import { Transcript } from '../transcript'
 import { LiveSession } from './LiveSession'
 import { SessionRuntimes } from './SessionRuntimes'
@@ -21,8 +21,8 @@ import type { ActivityRepository } from '../activityRepository'
 import type { HumanSubmissionRepository } from '../humanSubmissionRepository'
 
 interface CommandObserver {
-  configuration(): string
-  publisher(cwd: string): (commands: CommandInfo[]) => void
+  configuration(cwd: string): string
+  publisher(cwd: string, configuration: string): (commands: CommandInfo[]) => void
 }
 
 type Emit = (sessionId: string, event: ChatEvent) => void
@@ -42,8 +42,7 @@ export class SessionManager {
   private transcripts = new Map<string, Transcript>()
   private activeHistoryIds = new Map<string, string>()
   private transcriptLoads = new Map<string, Promise<Transcript>>()
-  /** 最近一次和会话文件同步时，文件里的消息条数；用来发现别处（终端、VS Code）续写了这个会话 */
-  private seen = new Map<string, number>()
+  private seen = new Map<string, string>()
   private sweeper = setInterval(() => this.recycle(), 60_000)
 
   private preferences: SessionPreferencesState
@@ -244,11 +243,7 @@ export class SessionManager {
         return
       }
       for (const path of attachments) await access(path)
-      if (this.seen.has(sessionId) && await this.checkExternal(sessionId, projectPath)) {
-        this.transcripts.delete(sessionId)
-        this.transcriptLoads.delete(sessionId)
-        this.publish(sessionId, { kind: 'replaceHistory', snapshot: await this.open(sessionId, projectPath) })
-      }
+      await this.syncExternalHistory(sessionId, projectPath)
       const prefs = this.prefs(sessionId)
       const session = this.live.get(sessionId)
       const busy = session?.state === 'running' || session?.state === 'awaiting'
@@ -489,31 +484,50 @@ export class SessionManager {
     })
   }
 
-  async checkExternal(sessionId: string, projectPath: string): Promise<boolean> {
-    if (this.live.has(sessionId)) return false // 正在本应用里运行的会话以本应用为准
-    const sdk = await loadSdk()
-    const count = (await sdk.getSessionMessages(this.historyId(sessionId), { dir: projectPath })).length
-    const before = this.seen.get(sessionId)
-    if (before === undefined) this.seen.set(sessionId, count)
-    return before !== undefined && count > before
+  checkExternal(sessionId: string, projectPath: string): Promise<boolean> {
+    return this.lock(sessionId, () => this.syncExternalHistory(sessionId, projectPath))
   }
 
-  handoffToCli(sessionId: string, projectPath: string): Promise<string> {
-    return this.lock(sessionId, async () => {
-      this.assertInactive(sessionId, '切换到 CLI')
-      if (this.prefs(sessionId).queue.items.some(item => item.editing || ['queued', 'failed', 'submitting', 'submitted', 'received', 'unknown'].includes(item.status))) {
-        throw new Error('请先处理待发消息及未确认的交付记录，再切换到 CLI')
+  private async syncExternalHistory(sessionId: string, projectPath: string): Promise<boolean> {
+    const current = this.transcripts.get(sessionId)
+    if (!current || this.isBusy(sessionId)) return false
+    const historyId = this.historyId(sessionId)
+    const sdk = await loadSdk()
+    const messages = await sdk.getSessionMessages(historyId, { dir: projectPath })
+    const stamp = this.historyStamp(messages)
+    if (!messages.length || this.seen.get(sessionId) === stamp || this.shuttingDown || this.isBusy(sessionId)) return false
+
+    const transcript = this.restoreHistory(historyId, projectPath, messages)
+    if (this.live.has(sessionId)) {
+      // 等待中的 SDK 调用和队列继续由原进程负责。自己的磁盘回写不触发重连。
+      if (this.live.hasConcurrentUse(sessionId) || this.prefs(sessionId).queue.items.some(
+        item => item.editing || ['queued', 'submitting', 'submitted', 'received'].includes(item.status)
+      )) return false
+      const known = new Set(current.messages.map(message => message.uuid))
+      if (!transcript.messages.some(message => message.startsTurn && message.uuid && !known.has(message.uuid))) {
+        this.seen.set(sessionId, stamp)
+        return false
       }
-      await this.transcript(sessionId, projectPath)
-      const id = this.historyId(sessionId)
-      const sdk = await loadSdk()
-      if (!(await sdk.getSessionMessages(id, { dir: projectPath })).length) throw new Error('会话尚未保存，请稍后重试')
       this.closeSession(sessionId)
-      this.transcripts.delete(sessionId)
-      this.transcriptLoads.delete(sessionId)
-      this.publish(sessionId, { kind: 'replaceHistory', snapshot: await this.open(sessionId, projectPath) })
-      return id
-    })
+    }
+    this.transcripts.set(sessionId, transcript)
+    this.seen.set(sessionId, stamp)
+    this.publish(sessionId, { kind: 'replaceHistory', snapshot: this.snapshot(sessionId, transcript) })
+    return true
+  }
+
+  private historyStamp(messages: SessionMessage[]): string {
+    return `${messages.length}:${messages.at(-1)?.uuid ?? ''}`
+  }
+
+  private restoreHistory(historyId: string, projectPath: string, messages: SessionMessage[]): Transcript {
+    const saved = this.activityStore?.load(historyId)
+    const transcript = new Transcript(projectPath, saved, this.submissionStore?.load(historyId))
+    for (const message of messages) transcript.apply(message)
+    transcript.finish()
+    transcript.activity.finishHistory(!saved)
+    transcript.takeChanged()
+    return transcript
   }
 
   async context(sessionId: string, projectPath: string, model: string | null): Promise<ContextUsage | null> {
@@ -557,15 +571,10 @@ export class SessionManager {
         messages = await sdk.getSessionMessages(candidate, { dir: projectPath })
         if (messages.length) break
       }
-      const saved = this.activityStore?.load(historyId)
-      const transcript = new Transcript(projectPath, saved, this.submissionStore?.load(historyId))
-      for (const m of messages) transcript.apply(m)
-      transcript.finish()
-      transcript.activity.finishHistory(!saved)
-      transcript.takeChanged()
+      const transcript = this.restoreHistory(historyId, projectPath, messages)
       if (this.transcriptLoads.get(sessionId) === loading) {
         this.activeHistoryIds.set(sessionId, historyId)
-        this.seen.set(sessionId, messages.length)
+        this.seen.set(sessionId, this.historyStamp(messages))
         this.transcripts.set(sessionId, transcript)
       }
       return transcript
@@ -606,9 +615,9 @@ export class SessionManager {
         void this.lock(sessionId, () => this.dispatch(sessionId, cwd)).catch(error => this.publish(sessionId, { kind: 'notice', text: String(error) }))
       }
     }
-    const configuration = this.commandObserver?.configuration()
+    const configuration = this.commandObserver?.configuration(cwd)
     const session = new LiveSession({
-      sessionId: historyId, cwd, resume, fork, options, transcript, emit, onCommands: this.commandObserver?.publisher(cwd),
+      sessionId: historyId, cwd, resume, fork, options, transcript, emit, onCommands: configuration === undefined ? undefined : this.commandObserver?.publisher(cwd, configuration),
       onConsumed: (ids) => {
         this.preferences.observe(sessionId, p => { for (const item of p.queue.items) if (ids.includes(item.id)) item.status = 'received' })
       },

@@ -12,6 +12,8 @@ import { openAppPanel, usePanel } from '../../panelStore'
 import { CommandPanel } from '../commands/CommandPanel'
 import { Button } from '../ui/Dialog'
 import { Composer, PermissionChip, ProjectChip } from './Composer'
+import { CliInstallCard } from '../connection/CliInstallCard'
+import { useCliConnection } from '../connection/useCliConnection'
 
 export function NewSessionPage() {
   const composerRoot = useRef<HTMLDivElement>(null)
@@ -32,12 +34,14 @@ export function NewSessionPage() {
   const [error, setError] = useState<string | null>(null)
   const [configStatus, setConfigStatus] = useState<string | null>(null)
   const project = projects.find((p) => p.id === selectedProjectId)
+  const cli = useCliConnection(project?.path)
   const panelOpen = usePanel((s) => s.panel !== null)
 
   if (projects.length === 0) {
     return (
       <Centered>
         <h1 className="font-serif text-[30px] font-normal tracking-tight">先添加一个项目文件夹</h1>
+        <div className="mt-4"><CliInstallCard status={cli.status} checking={cli.checking} loadError={cli.error} onRefresh={cli.refresh} /></div>
         <div className="mt-6">
           <Button variant="primary" onClick={() => void pickProject()}>
             <span className="flex items-center gap-1.5">
@@ -53,6 +57,7 @@ export function NewSessionPage() {
   return (
     <Centered>
       <h1 className="font-serif text-[38px] font-light tracking-[0.04em] text-[var(--greeting)]">{desk.greeting}</h1>
+      <div className="mt-4"><CliInstallCard status={cli.status} checking={cli.checking} loadError={cli.error} onRefresh={cli.refresh} /></div>
       <div ref={composerRoot} className="relative mt-4">
         <Composer fast={!!options.fastMode} rainbow={options.ultracode}
           sessionState={error ? 'error' : sending ? 'running' : 'idle'}

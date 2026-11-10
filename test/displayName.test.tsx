@@ -49,7 +49,7 @@ it('retains local token charts and name editing without subscription quota', asy
   expect(screen.getByRole('button', { name: '使用情况' })).toBeTruthy()
   expect(screen.queryByLabelText('套餐额度')).toBeNull()
   expect(screen.queryByText(/5h/)).toBeNull()
-  expect(screen.getByLabelText('Token 活动')).toBeTruthy()
+  expect(await screen.findByLabelText('Token 活动')).toBeTruthy()
   expect(screen.getByRole('button', { name: '修改显示名称' })).toBeTruthy()
   await screen.findByText('42')
 })

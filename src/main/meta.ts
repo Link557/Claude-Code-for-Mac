@@ -1,6 +1,6 @@
 // 缓存当前连接的模型选项，实时查询完成后更新。
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -8,6 +8,7 @@ import type { CommandInfo, MetaInfo, ModelOption } from '../shared/types'
 import { readMetadata } from './metadataQuery'
 import { claudeExecutable } from './sdk'
 import { adoptLoginShellEnv, shouldAdopt } from './env'
+import { cliFileIdentity } from './cliIdentity'
 
 const TTL = 5 * 60_000
 const DISK_TTL = 7 * 24 * 60 * 60_000
@@ -17,11 +18,7 @@ const metaCache = new Map<string, { promise: Promise<MetaInfo>; expires: number 
 
 async function configuration(): Promise<string> {
   const executable = claudeExecutable()
-  let fingerprint: string | null = null
-  if (executable) {
-    try { const info = await stat(executable); fingerprint = `${info.size}:${info.mtimeMs}` } catch { fingerprint = 'missing' }
-  }
-  return JSON.stringify([app.getVersion(), executable ?? null, fingerprint, process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')])
+  return JSON.stringify([app.getVersion(), cliFileIdentity(executable), process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')])
 }
 async function key(cwd: string): Promise<string> {
   if (app.isPackaged) await adoptLoginShellEnv()

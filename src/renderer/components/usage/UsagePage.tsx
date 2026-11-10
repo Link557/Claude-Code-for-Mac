@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pencil, RefreshCw, Upload } from 'lucide-react'
-import { EMPTY_ANALYTICS, type UsageAnalytics, type UsageProfile } from '@shared/usageAnalytics'
+import { EMPTY_ANALYTICS, type UsageProfile } from '@shared/usageAnalytics'
 import { resetTimeZh } from '@shared/format'
 import { formatUsageTokens as formatTokens } from '@shared/usageAnalytics'
-import { useUsage } from '../../usageStore'
+import { useUsage, useUsageStats } from '../../usageStore'
 import { UsageBar } from '../ui/UsageBar'
 import { Button, Dialog } from '../ui/Dialog'
 import { UsageCharts } from './UsageCharts'
@@ -18,31 +18,27 @@ function duration(ms: number | null): string {
 export function UsagePage() {
   const displayName = useDisplayName()
   const { overview, loading, error, refresh } = useUsage()
-  const [stats, setStats] = useState<UsageAnalytics>(EMPTY_ANALYTICS)
-  const [statsError, setStatsError] = useState<string | null>(null)
-  const [statsLoading, setStatsLoading] = useState(false)
+  const { stats: lastStats, error: statsError, loading: statsLoading, refresh: refreshStats } = useUsageStats()
+  const stats = lastStats ?? EMPTY_ANALYTICS
   const [editing, setEditing] = useState(false)
   const request = useRef<(force?: boolean) => void>(() => {})
   useEffect(() => {
     if (!useUsage.getState().lastAttempt) void refresh()
-    let disposed = false, busy = false, timer: ReturnType<typeof setTimeout> | undefined
-    const read = async (force = false): Promise<void> => {
-      if (busy || disposed) return
-      busy = true; clearTimeout(timer); setStatsLoading(true)
-      try {
-        const value = await window.desk.usage.stats(force)
-        if (!disposed) { setStats(value); setStatsError(value.error ?? null); timer = setTimeout(() => { if (!document.hidden) void read(!value.scanning); else timer = setTimeout(() => void read(false), 60000) }, value.scanning ? 1000 : 60000) }
-      } catch (e: any) { if (!disposed) { setStatsError(String(e.message ?? e)); timer = setTimeout(() => void read(true), 60000) } }
-      finally { busy = false; if (!disposed) setStatsLoading(false) }
+    let disposed = false, timer: ReturnType<typeof setTimeout> | undefined
+    const read = async (): Promise<void> => {
+      if (disposed) return
+      clearTimeout(timer)
+      await refreshStats()
+      if (!disposed) { clearTimeout(timer); timer = setTimeout(() => { if (!document.hidden) void read(); else timer = setTimeout(() => void read(), 60000) }, 60000) }
     }
-    request.current = force => { void read(force) }
+    request.current = () => { void read() }
     void read()
     let afterResult: ReturnType<typeof setTimeout> | undefined
-    const unsubscribe = window.desk.chat.onEvent((_id, event) => { if (event.kind === 'result') { clearTimeout(afterResult); afterResult = setTimeout(() => void read(true), 2000) } })
-    const onFocus = (): void => { void read(true) }
+    const unsubscribe = window.desk.chat.onEvent((_id, event) => { if (event.kind === 'result') { clearTimeout(afterResult); afterResult = setTimeout(() => void read(), 2000) } })
+    const onFocus = (): void => { void read() }
     window.addEventListener('focus', onFocus)
     return () => { disposed = true; clearTimeout(timer); clearTimeout(afterResult); unsubscribe(); window.removeEventListener('focus', onFocus) }
-  }, [refresh])
+  }, [refresh, refreshStats])
   const quota = overview?.usage
   const metrics = [
     [formatTokens(stats.total), '累计 Token', '输入、输出、缓存读取和缓存写入之和'],
@@ -67,7 +63,7 @@ export function UsagePage() {
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line min-[1100px]:grid-cols-5">
         {metrics.map(([value, label, hint]) => <div key={label} title={hint} className="last:col-span-2 min-[1100px]:last:col-span-1 flex min-h-[88px] flex-col items-center justify-center bg-bg px-2 py-4"><span className="text-center font-serif text-[21px] tabular-nums">{!stats.updatedAt || stats.scanning && !stats.firstDate ? '—' : value}</span><span className="mt-1 flex items-center gap-1.5 text-[12px] text-fg3">{label}</span></div>)}
       </div>
-      {(!stats.updatedAt || stats.scanning) && <p role="status" className="mt-2 text-[12px] text-fg3">正在读取…</p>}
+      {statsLoading && <p role="status" className="mt-2 text-[12px] text-fg3">正在读取…</p>}
       {(statsError || stats.issues > 0) && <p role="status" className="mt-2 text-[12px] text-danger">{statsError ? `统计刷新失败：${statsError}` : `有 ${stats.issues} 处记录不完整或无法读取，当前统计可能不完整。`}</p>}
       {quota?.available !== false && <section className="mt-7" aria-label="套餐额度">
         <h2 className="mb-2 font-serif text-[20px] font-normal" title={overview ? `更新于 ${new Date(overview.updatedAt).toLocaleString()}` : undefined}>套餐额度</h2>
@@ -76,7 +72,7 @@ export function UsagePage() {
           {!quota ? <p className="p-4 text-[13px] text-fg3">{error ? '暂时无法读取额度，请稍后刷新。' : '正在读取额度…'}</p> : !quota.available ? <p className="p-4 text-[13px] text-fg3">当前登录方式不适用套餐额度。</p> : !quota.windows.length ? <p className="p-4 text-[13px] text-fg3">暂时没有额度数据。</p> : quota.windows.map((w, i) => <div className="px-4 py-3 text-[13px]" key={`${w.kind}-${w.label}-${i}`}><UsageBar label={w.label} percent={w.percent} reset={w.resetsAt ? resetTimeZh(w.resetsAt) : '重置时间未知'} /></div>)}
         </div>
       </section>}
-      <UsageCharts days={stats.days} />
+      {lastStats && <UsageCharts days={stats.days} />}
       {editing && overview && <ProfileEditor key={overview.account.key} profile={overview.profile} onClose={() => setEditing(false)} />}
     </div>
   </div>

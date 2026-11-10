@@ -18,10 +18,10 @@ it('reuses the native installation even when Explorer PATH omits it', () => {
   file(join(options.modules, '@anthropic-ai/claude-agent-sdk-win32-x64/claude.exe'))
   expect(resolveNativeRuntime(options)).toEqual({ path: installed, source: 'installed' })
 })
-it('selects the matching bundled architecture without requiring a separate CLI install', () => {
+it('requires an installed Windows CLI even if a bundled executable exists', () => {
   const options = { ...fixture(), arch: 'arm64' }
-  const bundled = file(join(options.modules, '@anthropic-ai/claude-agent-sdk-win32-arm64/claude.exe'))
-  expect(resolveNativeRuntime(options)).toEqual({ path: bundled, source: 'bundled' })
+  file(join(options.modules, '@anthropic-ai/claude-agent-sdk-win32-arm64/claude.exe'))
+  expect(() => resolveNativeRuntime(options)).toThrow('未找到本机 Claude Code CLI')
 })
 it('honors a custom file and reports a missing or non-native custom file rather than silently changing engines', () => {
   const options = fixture()

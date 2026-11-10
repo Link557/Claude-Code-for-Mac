@@ -11,11 +11,10 @@ import * as files from './files'
 import { gitDiff } from './gitDiff'
 import * as meta from './meta'
 import { planUsage, readPlanUsage, withUsageQuery } from './usage'
-import { claudeRuntime } from './sdk'
 import { UsageWorkerClient } from './usageWorkerClient'
 import { UsageProfiles, usageAccount } from './usageProfile'
 import type { UsageOverview } from '../shared/usageAnalytics'
-import { onClaudeConfigChanged, watchClaudeConfig } from './claudeConfigChanges'
+import { claudeConfigIdentity, onClaudeConfigChanged, watchClaudeConfig } from './claudeConfigChanges'
 import { readClaudeConfig } from './claudeConfigSnapshot'
 import { runLocalCommand } from './localCommand'
 import * as projects from './projects'
@@ -30,7 +29,11 @@ import { appNotificationHandlers } from './appNotifications'
 import { Scheduler } from './schedules'
 import { readSkillBody, readSkillCatalog, setPluginEnabled } from './skills'
 import { windowControlHandlers } from './windowControls'
-import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable, powershellResumeCommand } from './connection'
+import { connectionStatus, openOfficialLogin, openInstallationHelp, pickClaudeExecutable } from './connection'
+import { installNativeClaude } from './cliInstaller'
+import { cliFileIdentity } from './cliIdentity'
+import { claudeExecutable } from './sdk'
+import { adoptLoginShellEnv } from './env'
 
 export function applyTheme(theme: Settings['theme']): void {
   nativeTheme.themeSource = theme
@@ -72,19 +75,40 @@ function broadcast(sessionId: string, event: ChatEvent): void {
   broadcastEvent('chat:onEvent', sessionId, event)
 }
 
+let commandRevision = 0
 onClaudeConfigChanged(change => {
+  commandRevision++
   meta.invalidate()
+  commandCatalog.invalidate()
   broadcastEvent('meta:onConfigChanged', change)
 })
 
-const commandConfiguration = (): string => JSON.stringify([store.read().settings.claudePath ?? null, app.getVersion()])
+const runtimeConfiguration = (): string => {
+  let identity: string
+  try { identity = cliFileIdentity(claudeExecutable()) }
+  catch { identity = 'unavailable' }
+  return JSON.stringify([store.read().settings.claudePath ?? null, app.getVersion(), identity])
+}
+const commandConfiguration = (cwd: string): string => JSON.stringify([runtimeConfiguration(), claudeConfigIdentity(cwd), commandRevision])
+let observedCli: string | undefined
+function checkCliRuntime(): boolean {
+  const current = runtimeConfiguration()
+  if (observedCli === undefined) { observedCli = current; return false }
+  if (current === observedCli) return false
+  observedCli = current
+  meta.invalidate()
+  commandCatalog.invalidate()
+  broadcastEvent('meta:onConfigChanged', { cwd: homedir(), scope: 'user' })
+  broadcastEvent('connection:onChanged')
+  return true
+}
 export const commandCatalog: CommandCatalog = new CommandCatalog({
   directory: () => join(app.getPath('userData'), 'command-catalog'),
   configuration: commandConfiguration,
   load: (cwd, signal, configuration) => chats.commandsFor(cwd, configuration) ?? readMetadata(cwd, signal).then((init) => init.commands),
   publish: (snapshot) => broadcastEvent('meta:onCommands', snapshot)
 })
-export const chats: SessionManager = new SessionManager(broadcast, activityRepository, { configuration: commandConfiguration, publisher: (cwd) => commandCatalog.publisher(cwd) }, createHumanSubmissionRepository(() => join(app.getPath('userData'), 'human-submissions')), createSessionPreferencesRepository(() => join(app.getPath('userData'), 'session-preferences')))
+export const chats: SessionManager = new SessionManager(broadcast, activityRepository, { configuration: commandConfiguration, publisher: (cwd, configuration) => commandCatalog.publisher(cwd, configuration) }, createHumanSubmissionRepository(() => join(app.getPath('userData'), 'human-submissions')), createSessionPreferencesRepository(() => join(app.getPath('userData'), 'session-preferences')))
 
 export const scheduler: Scheduler = new Scheduler({
   file: () => join(app.getPath('userData'), 'schedules.json'),
@@ -106,13 +130,24 @@ export function projectMetadata(cwd: string) {
 
 
 export function registerIpc(demo: DemoState | null, focusWindow?: () => void, finishSplash?: () => void): void {
+  observedCli = runtimeConfiguration()
   registerNamespace('window', windowControlHandlers)
   registerNamespace('connection', {
     status: async (_e, path) => {
       const status = await connectionStatus(path)
-      meta.invalidate()
-      commandCatalog.invalidate()
+      checkCliRuntime()
       return status
+    },
+    refreshRuntime: async () => { await adoptLoginShellEnv(); return checkCliRuntime() },
+    install: async () => {
+      const before = await connectionStatus()
+      if (before.state === 'ready') return before
+      if (before.state !== 'missing') throw new Error(before.state === 'invalidPath' ? '所选 CLI 文件已失效，请重新选择或恢复自动检测。' : '当前 CLI 无法运行，请重新选择文件。')
+      await installNativeClaude(progress => broadcastEvent('connection:onInstallProgress', progress))
+      const after = await connectionStatus()
+      checkCliRuntime()
+      if (after.state !== 'ready') throw new Error(after.error || '安装完成，但未能验证本机 CLI。')
+      return after
     },
     pickExecutable: () => pickClaudeExecutable(),
     login: () => openOfficialLogin(),
@@ -174,7 +209,7 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void, fi
       const next = store.update((d) => {
         d.settings = { ...d.settings, ...patch }
       }).settings
-      if (next.claudePath !== previousPath) { commandCatalog.invalidate(); meta.invalidate() }
+      if (next.claudePath !== previousPath) checkCliRuntime()
       applyTheme(next.theme)
       return next
     }
@@ -264,14 +299,6 @@ export function registerIpc(demo: DemoState | null, focusWindow?: () => void, fi
     setEffort: (_e, id, effort) => chats.setEffort(id, effort),
     respond: (_e, id, requestId, decision) => chats.respond(id, requestId, decision),
     checkExternal: (_e, id, path) => chats.checkExternal(id, path),
-    handoffToCli: async (_e, id, path) => {
-      if (process.platform !== 'win32') throw new Error('此接续入口适用于 Windows PowerShell')
-      const executable = claudeRuntime().path
-      const historyId = await chats.handoffToCli(id, path)
-      const command = powershellResumeCommand(executable, path, historyId)
-      await clipboard.writeText(command)
-      return command
-    },
     reload: (_e, id, path) => chats.reload(id, path),
     btw: (_e, id, path, question, history, options) => chats.sideQuestion(id, path, question, history, options),
     mcp: (_e, id, path) => chats.mcp(id, path),

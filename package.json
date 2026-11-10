@@ -28,6 +28,7 @@
     "dompurify": "3.4.17",
     "mammoth": "1.13.0",
     "node-pty": "1.1.0",
+    "openpgp": "6.3.2",
     "pdfjs-dist": "6.4.299",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "4.6.7"
@@ -77,6 +78,9 @@
     ],
     "npmRebuild": false,
     "win": {
+      "files": [
+        "!node_modules/@anthropic-ai/claude-agent-sdk-win32-*/**"
+      ],
       "target": [
         {
           "target": "dir",

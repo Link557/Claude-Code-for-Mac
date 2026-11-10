@@ -25,7 +25,8 @@ beforeEach(() => {
     meta: { cachedModels: vi.fn().mockResolvedValue(null), get: vi.fn().mockResolvedValue(meta()) },
     settings: { get: vi.fn().mockResolvedValue(initial), set: vi.fn(async patch => ({ ...useDesk.getState().settings!, ...patch })) },
     app: { state: vi.fn().mockResolvedValue({ home: '/home', demo: null, seededFromHistory: true }) },
-    projects: { list: vi.fn().mockResolvedValue([]) }
+    projects: { list: vi.fn().mockResolvedValue([]) },
+    connection: { status: vi.fn().mockResolvedValue({ state: 'ready', executable: '/usr/local/bin/claude', source: 'bundled', version: '2.1.299', configDirectory: '/home/.claude', loggedIn: true, authMethod: 'claude.ai', provider: 'firstParty', error: null }) }
   } as unknown as Window['desk']
 })
 afterEach(cleanup)
@@ -75,25 +76,30 @@ it('uses the real catalog, displays mapped IDs, constrains effort, and saves CLI
 })
 
 it('refreshes on provider changes without retaining unsupported effort or saving a disappeared model', async () => {
-  let changed!: Parameters<NonNullable<Window['desk']['meta']['onConfigChanged']>>[0]
+  type Listener = Parameters<Window['desk']['meta']['onConfigChanged']>[0]
+  const listeners = new Set<Listener>()
   const off = vi.fn()
-  window.desk.meta.onConfigChanged = vi.fn(listener => { changed = listener; return off })
+  window.desk.meta.onConfigChanged = vi.fn(listener => {
+    listeners.add(listener)
+    return () => { listeners.delete(listener); off() }
+  })
   const { unmount } = render(<WelcomePage />)
   openPreferences()
   await screen.findByText('实际模型：deepseek-chat')
   fireEvent.change(screen.getByLabelText(/默认模型/), { target: { value: 'custom/code' } })
   fireEvent.change(screen.getByLabelText(/思考程度/), { target: { value: 'high' } })
   vi.mocked(window.desk.meta.get).mockResolvedValue(meta([{ value: 'custom/code', label: 'Custom Code', resolvedModel: 'replacement', efforts: [] }]))
-  act(() => changed({ scope: 'user', cwd: '/home' }))
+  act(() => { for (const listener of listeners) listener({ scope: 'user', cwd: '/home' }) })
   await screen.findByText('实际模型：replacement')
   expect((screen.getByLabelText(/思考程度/) as HTMLSelectElement).value).toBe('')
   vi.mocked(window.desk.meta.get).mockResolvedValue(meta([]))
-  act(() => changed({ scope: 'user', cwd: '/home' }))
+  act(() => { for (const listener of listeners) listener({ scope: 'user', cwd: '/home' }) })
   await screen.findByText('当前 CLI 未提供可用模型。')
   fireEvent.click(screen.getByRole('button', { name: '开始使用' }))
   await waitFor(() => expect(window.desk.settings.set).toHaveBeenCalledExactlyOnceWith({ welcomeCompleted: true, theme: 'light' }))
   unmount()
-  expect(off).toHaveBeenCalledOnce()
+  expect(off).toHaveBeenCalledTimes(2)
+  expect(listeners.size).toBe(0)
 })
 
 it('prompts for a model when the saved default is absent from the current CLI catalog', async () => {

@@ -7,7 +7,6 @@ import { useChat } from '../../chatStore'
 import { RIGHT, MAX_SIDEBAR_PAGES, sidebarPageCount, useLayout, type SidePage } from '../../layoutStore'
 import { useDesk } from '../../store'
 import { useModal } from '../../modalStore'
-import { IconButton } from '../sidebar/SessionRow'
 import { ResizeHandle } from '../ui/ResizeHandle'
 import { BtwPane } from './BtwPane'
 import { ProjectFilesPane } from './ProjectFilesPane'
@@ -77,7 +76,7 @@ export function RightPanel({ sessionId, projectId }: { sessionId: string; projec
     >
       <div data-sidebar-viewport className="h-full overflow-hidden">
       <aside style={{ width: rightWidth }} aria-label="工作区侧栏" className="flex h-full flex-col border-l border-line bg-bg">
-        <div className="drag flex h-[52px] shrink-0 items-center gap-1 pl-2 pr-14">
+        <div className="drag flex h-[52px] shrink-0 items-center gap-1 pl-2 pr-12">
           <div role="tablist" aria-label="侧栏页面" className="no-drag flex min-w-0 flex-1 gap-0.5 overflow-x-auto [scrollbar-width:none]">
             {tabs.map((tab) => {
               const active = tab.id === rightTab
@@ -95,10 +94,9 @@ export function RightPanel({ sessionId, projectId }: { sessionId: string; projec
               )
             })}
           </div>
-          <div className="no-drag flex">
-            {sidebarPageCount(layout) < MAX_SIDEBAR_PAGES && <IconButton label="新建侧栏页面" onClick={() => layout.newPage(cwd)}><Plus size={16} /></IconButton>}
-            <IconButton label={expanded ? '还原侧栏宽度' : '展开侧栏页面'} onClick={() => layout.setExpanded(!expanded)}>{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</IconButton>
-
+          <div className="no-drag flex items-center gap-1">
+            {sidebarPageCount(layout) < MAX_SIDEBAR_PAGES && <button type="button" aria-label="新建侧栏页面" title="新建侧栏页面" onClick={() => layout.newPage(cwd)} className="session-toolbar-button text-fg2 hover:bg-hover hover:text-fg"><Plus size={16} /></button>}
+            <button type="button" aria-label={expanded ? '还原侧栏宽度' : '展开侧栏页面'} title={expanded ? '还原侧栏宽度' : '展开侧栏页面'} onClick={() => layout.setExpanded(!expanded)} className="session-toolbar-button text-fg2 hover:bg-hover hover:text-fg">{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
           </div>
         </div>
         <FileContext.Provider value={{ cwd }}>
@@ -152,7 +150,8 @@ export function RightPanelToggle() {
   const count = sidebarPageCount(layout)
   const palette = PAGE_COLORS[Math.min(count, MAX_SIDEBAR_PAGES) - 1]
   const countStyle = palette ? { '--page-count-color': palette[0], '--page-count-color-dark': palette[1] } as CSSProperties : undefined
-  const label = layout.rightOpen ? '收起右栏（⌘⇧B）' : '展开右栏（⌘⇧B）'
+  const shortcut = isWindows() ? 'Ctrl+Shift+B' : '⌘⇧B'
+  const label = layout.rightOpen ? `收起右栏（${shortcut}）` : `展开右栏（${shortcut}）`
   return <div className="no-drag">
     <button type="button" title={`${label} · ${count} 个页面`} aria-label={label} aria-expanded={layout.rightOpen} data-page-count={count} onClick={() => layout.setRightOpen(!layout.rightOpen)} className={`session-toolbar-button ${layout.rightOpen ? 'bg-active text-fg' : 'text-fg2 hover:bg-hover'}`}>
       <svg viewBox="0 0 24 24" className="sidebar-page-count size-[23px] overflow-visible" style={countStyle} role="img" aria-label={`已打开 ${count} 个侧栏页面`}>

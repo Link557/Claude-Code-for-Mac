@@ -1,7 +1,9 @@
 import { readFileSync, statSync, watch, type FSWatcher } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { LEGACY_CONFIG_KEYS } from './claudeConfigValues'
+import { shouldAdopt } from './env'
 import type { ClaudeConfigChange } from '../shared/claudeConfig'
 
 const listeners = new Set<(change: ClaudeConfigChange) => void>()
@@ -26,19 +28,32 @@ function stamp(path: string): string {
 
 const watchers = new Map<string, { close(): void }>()
 
+function configFiles(cwd: string) {
+  cwd = resolve(cwd)
+  const configDir = resolve(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'))
+  const legacy = process.env.CLAUDE_CONFIG_DIR ? join(configDir, '.claude.json') : join(homedir(), '.claude.json')
+  return [
+    { path: join(configDir, 'settings.json'), scope: 'user' as const },
+    { path: legacy, scope: 'user' as const },
+    { path: join(cwd, '.claude', 'settings.json'), scope: 'project' as const },
+    { path: join(cwd, '.claude', 'settings.local.json'), scope: 'project' as const }
+  ]
+}
+
+/** Stable cache identity, with configuration and environment values kept out of persisted keys. */
+export function claudeConfigIdentity(cwd: string): string {
+  const files = configFiles(cwd).map(file => [file.path, stamp(file.path)])
+  const env = Object.entries(process.env).filter(([name]) => shouldAdopt(name)).sort(([a], [b]) => a.localeCompare(b))
+  return createHash('sha256').update(JSON.stringify([files, env])).digest('hex')
+}
+
 /** Watch only configuration directories and their parents; never recursively watch the project. */
 export function watchClaudeConfig(cwd: string): void {
   cwd = resolve(cwd)
   const configDir = resolve(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'))
   const key = JSON.stringify([cwd, configDir])
   if (watchers.has(key)) return
-  const legacy = process.env.CLAUDE_CONFIG_DIR ? join(configDir, '.claude.json') : join(homedir(), '.claude.json')
-  const files = [
-    { path: join(configDir, 'settings.json'), scope: 'user' as const },
-    { path: legacy, scope: 'user' as const },
-    { path: join(cwd, '.claude', 'settings.json'), scope: 'project' as const },
-    { path: join(cwd, '.claude', 'settings.local.json'), scope: 'project' as const }
-  ]
+  const files = configFiles(cwd)
   const directories = new Map<string, Set<string>>()
   const add = (dir: string, name: string) => {
     let names = directories.get(dir)
@@ -93,13 +108,7 @@ export function closeClaudeConfigWatchers(): void {
 }
 
 export function observeClaudeConfig(cwd: string): (fallback?: boolean) => void {
-  const directory = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
-  const files = [
-    { path: join(directory, 'settings.json'), scope: 'user' as const },
-    { path: process.env.CLAUDE_CONFIG_DIR ? join(directory, '.claude.json') : join(homedir(), '.claude.json'), scope: 'user' as const },
-    { path: join(cwd, '.claude', 'settings.json'), scope: 'project' as const },
-    { path: join(cwd, '.claude', 'settings.local.json'), scope: 'project' as const }
-  ]
+  const files = configFiles(cwd)
   let previous = files.map(file => stamp(file.path))
   return (fallback = false) => {
     const next = files.map(file => stamp(file.path))

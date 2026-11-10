@@ -5,6 +5,7 @@ import { isConfigRecord, readConfigState } from './claudeConfigProtocol'
 import { listApiModels } from './modelApi'
 import { modelChoices } from './modelChoices'
 import { providerRoute } from './providerRoute'
+import { resolveFableCatalog } from './fableCatalog'
 export { closeTemporaryQueries as closeMetadataQueries } from './temporaryQuery'
 
 export function readMetadata(cwd: string, signal?: AbortSignal, includeModels = false): Promise<SDKControlInitializeResponse & { modelCatalogError?: string }> {
@@ -18,10 +19,11 @@ export function readMetadata(cwd: string, signal?: AbortSignal, includeModels = 
     try {
       const config = await readConfigState(query)
       const env = { ...process.env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) }
-      const gateway = providerRoute(init.account ?? {}, env) === 'gateway'
-        ? await listApiModels(env, querySignal)
-        : undefined
-      return { ...init, models: modelChoices(init.models, gateway, env) }
+      const route = providerRoute(init.account ?? {}, env)
+      const gateway = route === 'gateway' ? await listApiModels(env, querySignal) : undefined
+      const choices = modelChoices(init.models, gateway, env)
+      const official = init.account?.apiProvider === 'firstParty' && route === 'firstParty' && !env.ANTHROPIC_DEFAULT_FABLE_MODEL
+      return { ...init, models: official ? await resolveFableCatalog(choices, query) : choices }
     } catch (error) {
       return {
         ...init,

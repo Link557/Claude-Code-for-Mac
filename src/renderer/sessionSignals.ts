@@ -7,6 +7,8 @@ import { refreshSessionsInBackground, useDesk } from './store'
 export function connectSessionSignals(): () => void {
   const { app, chat } = window.desk
   let lastBadge: number | undefined
+  const titleChecks = new Set<string>()
+  const titleTimers = new Set<ReturnType<typeof setTimeout>>()
   const syncBadge = (): void => {
     const { projects, sessions } = useDesk.getState()
     const { unread } = useSessionMarks.getState()
@@ -44,12 +46,21 @@ export function connectSessionSignals(): () => void {
     }
     if (event.kind === 'result') {
       const projectId = useChat.getState().chats[sessionId]?.projectId
-      if (projectId) refreshSessionsInBackground(projectId)
+      if (projectId) {
+        refreshSessionsInBackground(projectId)
+        // CLI can append its generated title after emitting the first result.
+        if (!titleChecks.has(sessionId)) {
+          titleChecks.add(sessionId)
+          const timer = setTimeout(() => { titleTimers.delete(timer); refreshSessionsInBackground(projectId) }, 3000)
+          titleTimers.add(timer)
+        }
+      }
     }
     notifyIfAway(sessionId, event)
   })
   syncBadge()
   return () => {
+    for (const timer of titleTimers) clearTimeout(timer)
     stopEvents()
     stopScheduled()
     stopClick()

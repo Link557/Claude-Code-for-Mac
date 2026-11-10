@@ -10,6 +10,7 @@ import { providerRoute } from './providerRoute'
 import { terminalCommand } from './nativeRuntime'
 import { proxyEnvironment, readSystemProxy } from './systemProxy'
 import { adoptLoginShellEnv } from './env'
+import * as store from './store'
 
 const run = promisify(execFile)
 
@@ -26,16 +27,24 @@ export function parseAuthentication(stdout: string): Pick<ConnectionStatus, 'log
 }
 
 export async function connectionStatus(cwd = homedir()): Promise<ConnectionStatus> {
-  const result: ConnectionStatus = { executable: null, source: null, version: null, configDirectory: null, loggedIn: false, authMethod: null, provider: null, error: null }
+  const result: ConnectionStatus = { state: 'missing', executable: null, source: null, version: null, configDirectory: null, loggedIn: null, authMethod: null, provider: null, error: null }
   try {
     await adoptLoginShellEnv()
-    const runtime = claudeRuntime()
+    let runtime: ReturnType<typeof claudeRuntime>
+    try { runtime = claudeRuntime() }
+    catch (error) {
+      result.state = store.read().settings.claudePath ? 'invalidPath' : 'missing'
+      throw error
+    }
     result.executable = runtime.path
     result.source = runtime.source
+    result.state = 'unusable'
     const env = proxyEnvironment(await readSystemProxy(), process.env)
     const options = { cwd, env, windowsHide: true, timeout: 15_000, maxBuffer: 256 * 1024 }
     const version = await run(runtime.path, ['--version'], options)
     result.version = version.stdout.trim()
+    if (!result.version) throw new Error('Claude Code 未返回版本号，请检查 CLI 文件后重试。')
+    result.state = 'ready'
     let stdout: string
     try { stdout = (await run(runtime.path, ['auth', 'status', '--json'], options)).stdout }
     catch (error) {
@@ -76,11 +85,6 @@ export function powershellLoginCommand(executable: string): string {
 
 export function posixLoginCommand(executable: string): string {
   return `'${executable.replace(/'/g, "'\\''")}' auth login`
-}
-
-export function powershellResumeCommand(executable: string, cwd: string, sessionId: string): string {
-  const quote = (value: string) => `'${value.replace(/'/g, "''")}'`
-  return `Set-Location -LiteralPath ${quote(cwd)}\r\n& ${quote(executable)} --resume ${quote(sessionId)}`
 }
 
 /** The user explicitly opens this interactive terminal to complete official OAuth. */

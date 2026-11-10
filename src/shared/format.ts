@@ -19,8 +19,29 @@ export function relativeTimeZh(ts: number, now = Date.now()): string {
 
 const MAX_TITLE = 80
 
+/** Composer prepends one file reference per line; prefer the task over those paths. */
+export function promptTitle(prompt: string): string {
+  let remaining = prompt.trim()
+  const paths: string[] = []
+  while (remaining) {
+    const match = /^@("(?:[^"\\]|\\.)*"|\S+)(?:\s+|$)/.exec(remaining)
+    if (!match) break
+    let path = match[1]
+    if (path.startsWith('"')) { try { path = JSON.parse(path) as string } catch { /* preserve the reference */ } }
+    // CLI flattening makes arbitrary bare @mentions indistinguishable from
+    // extensionless paths, so only recognize these common filenames here.
+    if (!/[\\/]/.test(path) && !/\.[a-zA-Z][a-zA-Z0-9]{0,10}$/.test(path) && !/^(?:Dockerfile|Makefile)$/i.test(path)) break
+    paths.push(path.split(/[\\/]/).filter(Boolean).at(-1) ?? path)
+    remaining = remaining.slice(match[0].length).trimStart()
+  }
+  return remaining.trim() || paths.join('、')
+}
+
 export function sessionTitle(info: { customTitle?: string; summary?: string; firstPrompt?: string }): string {
-  for (const raw of [info.customTitle, info.summary, info.firstPrompt]) {
+  const normalized = (s?: string): string => s?.replace(/\s+/g, ' ').trim() ?? ''
+  // SDK uses the flattened first prompt as its summary until a title exists.
+  const summary = normalized(info.summary) === normalized(info.firstPrompt) ? undefined : info.summary
+  for (const raw of [info.customTitle, summary, info.firstPrompt && promptTitle(info.firstPrompt)]) {
     const text = raw?.replace(/\s+/g, ' ').trim()
     if (text) return text.length > MAX_TITLE ? text.slice(0, MAX_TITLE) + '…' : text
   }

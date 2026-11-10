@@ -7,6 +7,8 @@ export interface NativeRuntime {
   source: 'custom' | 'installed' | 'bundled'
 }
 
+const MISSING_RUNTIME = '未找到本机 Claude Code CLI。请安装官方原生 CLI，或在接入设置中选择已有文件。'
+
 function isFile(path: string): boolean {
   try { return statSync(path).isFile() } catch { return false }
 }
@@ -31,9 +33,10 @@ export function resolveNativeRuntime(options: {
     const directories = pathValue.split(';').map(p => p.replace(/^"|"$/g, '')).filter(p => win32.isAbsolute(p))
     const installed = [...directories.map(p => join(p, 'claude.exe')), join(home, '.local', 'bin', 'claude.exe')].find(isFile)
     if (installed) return { path: installed, source: 'installed' }
+    throw new Error(MISSING_RUNTIME)
   }
-  const bundled = join(modules, `@anthropic-ai/claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude')
-  if (!isFile(bundled)) throw new Error('未找到 Claude Code 运行引擎。请安装官方原生 CLI，或在接入设置中选择已有文件。')
+  const bundled = join(modules, `@anthropic-ai/claude-agent-sdk-${platform}-${arch}`, 'claude')
+  if (!isFile(bundled)) throw new Error(MISSING_RUNTIME)
   return { path: bundled, source: 'bundled' }
 }
 

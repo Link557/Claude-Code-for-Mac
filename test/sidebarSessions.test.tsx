@@ -72,6 +72,19 @@ it('keeps the latest refresh when an earlier project list finishes later', async
   await earlier
   expect(useDesk.getState().sessions.p).toEqual([{ ...session, archived: true }])
 })
+it('keeps a manual rename when an older automatic title request finishes late', async () => {
+  let finish!: (rows: SessionSummary[]) => void
+  const list = vi.mocked(window.desk.sessions.list)
+  list.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  list.mockResolvedValueOnce([{ ...session, title: '手动名称' }])
+  window.desk.sessions.rename = vi.fn().mockResolvedValue(undefined)
+  useDesk.setState({ sessions: { p: [session] } })
+  const earlier = useDesk.getState().refreshSessions('p')
+  await useDesk.getState().renameSession(session, 'p', '手动名称')
+  finish([{ ...session, title: '迟到的自动标题' }])
+  await earlier
+  expect(useDesk.getState().sessions.p[0].title).toBe('手动名称')
+})
 it('does not reinsert sessions from a refresh that outlives project removal', async () => {
   let finish!: (rows: SessionSummary[]) => void
   vi.mocked(window.desk.sessions.list).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))

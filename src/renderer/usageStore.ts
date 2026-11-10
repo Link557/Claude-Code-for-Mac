@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { UsageOverview, UsageProfile } from '@shared/usageAnalytics'
+import type { UsageAnalytics, UsageOverview, UsageProfile } from '@shared/usageAnalytics'
 
 interface State {
   overview: UsageOverview | null
@@ -46,5 +46,26 @@ export const useUsage = create<State>((set, get) => ({
     profileRevision++
     const current = get().overview
     if (get().scope === scope && current?.account.key === previous.account.key) set({ overview: { ...current, profile: saved } })
+  }
+}))
+
+interface StatsState {
+  stats: UsageAnalytics | null
+  loading: boolean
+  error: string | null
+  refresh(): Promise<void>
+}
+let statsPending: Promise<void> | null = null
+/** Share the last successful local scan while the usage page is closed. */
+export const useUsageStats = create<StatsState>((set) => ({
+  stats: null, loading: false, error: null,
+  refresh() {
+    if (statsPending) return statsPending
+    set({ loading: true })
+    statsPending = window.desk.usage.stats(true).then(value => {
+      if (value.error) set({ error: value.error })
+      else set({ stats: value, error: null })
+    }, error => set({ error: String(error.message ?? error) })).finally(() => { statsPending = null; set({ loading: false }) })
+    return statsPending
   }
 }))

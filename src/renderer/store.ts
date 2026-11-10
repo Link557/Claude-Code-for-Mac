@@ -4,6 +4,7 @@ import { useUsage } from './usageStore'
 import { useLayout } from './layoutStore'
 import { projectRemoved } from './projectLifecycle'
 import { errorText } from './ipcError'
+import { sessionTitle } from '@shared/format'
 import type { DemoState, DetectedFolder, Project, SessionSummary, Settings } from '@shared/types'
 import type { SessionOptions } from '@shared/chat'
 
@@ -205,7 +206,10 @@ export const useDesk = create<DeskState>((set, get) => ({
   async renameSession(session, projectId, title) {
     const project = get().projects.find((p) => p.id === projectId)
     if (!project || !title.trim() || title === session.title) return
+    sessionRefreshes.delete(projectId)
     await desk().sessions.rename(session.id, title.trim(), project.path)
+    sessionRefreshes.delete(projectId)
+    set(state => ({ sessions: { ...state.sessions, [projectId]: (state.sessions[projectId] ?? []).map(row => row.id === session.id ? { ...row, title: title.trim() } : row) } }))
     await get().refreshSessions(projectId)
   },
 
@@ -256,7 +260,7 @@ export const useDesk = create<DeskState>((set, get) => ({
     const list = get().sessions[projectId] ?? []
     if (list.some((s) => s.id === sessionId)) return
     const project = get().projects.find((p) => p.id === projectId)
-    const entry = { id: sessionId, title: firstPrompt.replace(/\s+/g, ' ').trim().slice(0, 80), cwd: project?.path ?? '', lastModified: Date.now(), archived: false }
+    const entry = { id: sessionId, title: sessionTitle({ firstPrompt }), cwd: project?.path ?? '', lastModified: Date.now(), archived: false }
     set({ sessions: { ...get().sessions, [projectId]: [entry, ...list] } })
   },
 

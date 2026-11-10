@@ -11,6 +11,11 @@ const electron = vi.hoisted(() => ({
   on: vi.fn(),
   removeListener: vi.fn()
 }))
+const startup = vi.hoisted(() => ({ storeReads: 0 }))
+vi.mock('../src/main/store', async original => {
+  const store = await original<typeof import('../src/main/store')>()
+  return { ...store, read: () => { startup.storeReads++; return store.read() } }
+})
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/claude-desk-test', getVersion: () => '0', focus: vi.fn(), dock: undefined },
@@ -41,11 +46,17 @@ vi.mock('../src/main/usageProfile', async original => {
 
 afterAll(async () => { (await import('../src/main/ipc')).chats.closeAll() })
 
+let readsBeforeRegistration = -1
 beforeAll(async () => {
   const { registerIpc } = await import('../src/main/ipc')
   const { registerWorkspaceIpc } = await import('../src/main/workspace')
+  readsBeforeRegistration = startup.storeReads
   registerIpc(null)
   registerWorkspaceIpc()
+})
+
+it('does not read the app store while IPC modules are imported before userData is configured', () => {
+  expect(readsBeforeRegistration).toBe(0)
 })
 
 it('registers every invoke channel in the contract exactly once', () => {

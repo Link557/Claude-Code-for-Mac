@@ -31,10 +31,13 @@ function useCommandCatalog(cwd: string | undefined, active: boolean) {
     if (!cwd || !active) return () => { mounted.current = false }
     let live = true
     const off = window.desk?.meta?.onCommands?.((snapshot) => { if (live) accept(snapshot) })
+    const offConfig = window.desk?.meta?.onConfigChanged?.((change) => {
+      if (change.scope !== 'project' || change.cwd === cwd) void request(true)
+    })
     const refresh = (): void => { void request() }
     refresh()
     window.addEventListener('focus', refresh)
-    return () => { live = false; mounted.current = false; off?.(); window.removeEventListener('focus', refresh) }
+    return () => { live = false; mounted.current = false; off?.(); offConfig?.(); window.removeEventListener('focus', refresh) }
   }, [cwd, active, accept, request])
   return {
     snapshot: result?.scope === scope ? result.snapshot : { cwd: cwd ?? '', revision: 0, commands: BASE_COMMANDS, status: 'loading' as const, updatedAt: 0 },

@@ -3,7 +3,6 @@ import { parseDesktopCommand } from '@shared/sessionCommand'
 import { errorText } from '../../ipcError'
 import { ModePicker } from '../newSession/ModePicker'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
 import type { ComposerAttachment } from '@shared/attachments'
 import type { UiBlock, UiMessage } from '@shared/chat'
 import type { CommandInfo } from '@shared/types'
@@ -49,7 +48,7 @@ const EXTRA_COMMANDS: CommandInfo[] = [
 
 export function ChatView({ sessionId, projectId }: { sessionId: string; projectId: string }) {
   const chat = useChat((s) => s.chats[sessionId])
-  const { load, reload, send, edit, interrupt, setOptions, respond, queueAction } = useChatActions()
+  const { load, send, edit, interrupt, setOptions, respond, queueAction } = useChatActions()
   const cwd = useDesk((s) => s.projects.find((p) => p.id === projectId)?.path)
   const normalDraft = useComposerDrafts(s => s.drafts[sessionId] ?? EMPTY_DRAFT)
   const editing = useComposerDrafts(s => s.edits[sessionId])
@@ -91,17 +90,28 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
     }
   }, [sessionId, chat?.loaded, unread, sidebarExpanded])
 
-  // 回到窗口时检查这个会话是否在终端或 VS Code 里被续写了
-  const [external, setExternal] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const idle = chat?.loaded && chat.state === 'idle'
   useEffect(() => {
     if (!idle || !cwd) return
+    let disposed = false
+    let checking = false
     const check = (): void => {
-      window.desk.chat.checkExternal(sessionId, cwd).then(setExternal, () => {})
+      if (checking || document.visibilityState !== 'visible') return
+      checking = true
+      void window.desk.chat.checkExternal(sessionId, cwd).then(
+        () => { if (!disposed) setSyncError(null) },
+        error => { if (!disposed) setSyncError(`读取 CLI 会话更新失败：${errorText(error)}`) }
+      ).finally(() => { checking = false })
     }
     check()
     window.addEventListener('focus', check)
-    return () => window.removeEventListener('focus', check)
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      disposed = true
+      window.removeEventListener('focus', check)
+      document.removeEventListener('visibilitychange', check)
+    }
   }, [idle, cwd, sessionId])
 
   const model = chat?.options.model ?? null
@@ -170,23 +180,7 @@ export function ChatView({ sessionId, projectId }: { sessionId: string; projectI
               className="chat-scroll min-h-0 flex-1 overflow-y-auto px-8"
             >
               <div className={`chat-messages mx-auto max-w-[760px] ${crabOverlap ? 'pb-[76px]' : 'pb-6'}`}>
-                {external && (
-                  <div className="chat-external-update sticky z-10 mb-2 flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-[13px] shadow-card">
-                    <span className="min-w-0 flex-1 text-fg2">会话有更新</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExternal(false)
-                        followLatest()
-                        void reload(sessionId)
-                      }}
-                      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium hover:bg-hover"
-                    >
-                      <RefreshCw size={13} />
-                      更新
-                    </button>
-                  </div>
-                )}
+                {syncError && <ChatError error={syncError} />}
                 {!chat.loaded && <div className="py-10 text-center text-fg3">正在加载对话…</div>}
                 <div ref={turnList}>
                   {turns.map((turn, i) => (

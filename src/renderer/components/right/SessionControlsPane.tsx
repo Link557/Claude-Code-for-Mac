@@ -38,7 +38,9 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
           : tab === 'diff'
             ? await window.desk.files.diff(cwd, source === 'turn' ? 'working' : source)
             : await window.desk.chat.rules(sessionId, cwd)
-        if (!cancelled) setData(value)
+        if (!cancelled) {
+          setData(value)
+        }
       } catch (e) {
         if (!cancelled) setError(String(e))
       }
@@ -76,7 +78,7 @@ export function SessionControlsPane({ sessionId, cwd, active, turnDiff, initialT
     drafts.updateDraft(sessionId, { text: text + '\n请审阅以下差异\n' + data })
   }
 
-  const outsideRepository = data === null
+  const outsideRepository = tab === 'diff' && data === null
   const ruleState = data && typeof data !== 'string' ? data : null
   const rules: PermissionRule[] = ruleState?.rules ?? []
   const buttonStyle = 'rounded-lg bg-chip px-3 py-1.5 disabled:opacity-40'

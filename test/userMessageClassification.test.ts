@@ -5,6 +5,31 @@ import { turnsOf } from '../src/shared/fileChanges'
 
 const imageNote = '[Image: original 1500x2880, displayed at 1042x2000. Multiply coordinates by 1.44 to map to original image.]'
 const user = (content: unknown, extra = {}) => ({ type: 'user', parent_tool_use_id: null, message: { role: 'user', content }, ...extra })
+
+it('hides only a uniquely matched successful synthetic Skill body in its tool scope', () => {
+  const t = new Transcript()
+  const skill = (id: string, parent: string | null = null) => ({ type: 'assistant', parent_tool_use_id: parent, message: { id: `a-${id}`, content: [{ type: 'tool_use', id, name: 'Skill', input: { skill: 'demo' } }] } })
+  const receipt = (id: string, parent: string | null = null, error = false) => ({ type: 'user', parent_tool_use_id: parent, message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Launching skill: demo', is_error: error }] } })
+  const body = (uuid: string, extra = {}) => user('Base directory for this skill: /demo\n\n# Body', { uuid, isSynthetic: true, ...extra })
+  t.apply(skill('one')); t.apply(receipt('one')); t.apply(body('hidden'))
+  expect(t.messages.some(m => m.uuid === 'hidden')).toBe(false)
+  t.apply(skill('bad')); t.apply(receipt('bad', null, true)); t.apply(body('failed'))
+  expect(t.messages.some(m => m.uuid === 'failed')).toBe(true)
+  t.apply(skill('a')); t.apply(skill('b')); t.apply(receipt('a')); t.apply(receipt('b')); t.apply(body('ambiguous'))
+  expect(t.messages.some(m => m.uuid === 'ambiguous')).toBe(true)
+  t.apply(body('wrong-id', { sourceToolUseID: 'missing' }))
+  expect(t.messages.some(m => m.uuid === 'wrong-id')).toBe(true)
+  t.apply(body('a-hidden', { sourceToolUseID: 'a' }))
+  t.apply(body('b-hidden', { sourceToolUseID: 'b' }))
+  expect(t.messages.some(m => m.uuid === 'a-hidden' || m.uuid === 'b-hidden')).toBe(false)
+  t.apply(skill('nested', 'agent')); t.apply(receipt('nested', 'agent')); t.apply(body('wrong-scope'))
+  expect(t.messages.some(m => m.uuid === 'wrong-scope')).toBe(true)
+  t.apply({ ...body('nested-hidden', { sourceToolUseID: 'nested' }), parent_tool_use_id: 'agent' })
+  expect(t.messages.some(m => m.uuid === 'nested-hidden')).toBe(false)
+  t.addUser('Base directory for this skill: /demo\n\n# pasted', 'human')
+  t.apply(body('human'))
+  expect(t.messages.find(m => m.uuid === 'human')?.source).toBe('human')
+})
 const assistant = (id: string, content: unknown[]) => ({ type: 'assistant', parent_tool_use_id: null, message: { id, content } })
 
 it('keeps repeated image tool results within the original turn without ending execution', () => {

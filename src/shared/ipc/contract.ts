@@ -1,7 +1,7 @@
 // 渲染进程和主进程之间唯一的接口定义：preload 按它生成 window.desk，主进程按它注册和校验处理函数。
 // 通道名一律是「命名空间:方法名」，不要在别处手写通道字符串。
 import type { ClaudeConfigChange, ClaudeConfigSnapshot } from '../claudeConfig'
-import type { ConnectionStatus } from '../connection'
+import type { CliInstallProgress, ConnectionStatus } from '../connection'
 import type { DiffSource, FileRewindResult, LiveSetting, PermissionRules, RuleChange, TaskOutput } from '../sessionControl'
 import type { UsageAnalytics, UsageOverview, UsageProfile } from '../usageAnalytics'
 import type { CommandCatalogSnapshot } from '../commandCatalog'
@@ -27,7 +27,11 @@ export const contract = {
     status: invoke<[projectPath?: string], ConnectionStatus>(),
     pickExecutable: invoke<[], string | null>(),
     login: invoke<[]>(),
-    installationHelp: invoke<[]>()
+    installationHelp: invoke<[]>(),
+    install: invoke<[], ConnectionStatus>(),
+    refreshRuntime: invoke<[], boolean>(),
+    onInstallProgress: event<[progress: CliInstallProgress]>(),
+    onChanged: event<[]>()
   },
   usage: {
     overview: invoke<[cwd?: string], UsageOverview>(),
@@ -175,7 +179,6 @@ export const contract = {
     respond: invoke<[sessionId: string, requestId: string, decision: Decision]>(),
     /** 会话是否在别处（终端、VS Code）有了新消息 */
     checkExternal: invoke<[sessionId: string, projectPath: string], boolean>(),
-    handoffToCli: invoke<[sessionId: string, projectPath: string], string>(),
     /** 丢掉缓存，从会话文件重新读取 */
     reload: invoke<[sessionId: string, projectPath: string], ChatSnapshot>(),
     /** 当前上下文窗口占用；会话不存在或读取失败时为 null */

@@ -32,6 +32,8 @@ app.once('browser-window-created', (_event, win) => {
       await wait("[...document.querySelectorAll('button')].some(b => b.textContent === '账号与接入')")
       await js("[...document.querySelectorAll('button')].find(b => b.textContent === '账号与接入').click()")
       await wait("[...document.querySelectorAll('button')].some(b => b.textContent === '重新检测' && !b.disabled)")
+      const projects = await js('window.desk.projects.list()')
+      assert.deepEqual(projects.map(item => item.path), [project], 'isolated userData project was not loaded')
       const status = await js(`window.desk.connection.status(${JSON.stringify(project)})`)
       assert.equal(status.error, null)
       assert.ok(status.executable.endsWith('.exe'))
@@ -58,4 +60,4 @@ app.once('browser-window-created', (_event, win) => {
     } catch (error) { console.error('FAIL', error.message); clearTimeout(timeout); app.exit(1) }
   })
 })
-require(resolve('out/main/index.js'))
+require(process.env.CLAUDE_DESK_SMOKE_MAIN || resolve('out/main/index.js'))

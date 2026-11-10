@@ -25,23 +25,59 @@ beforeEach(() => {
   manager = new SessionManager(emit)
 })
 afterEach(() => manager.closeAll())
-it('hands off persisted idle history and incorporates CLI additions before the next desktop send', async () => {
+it('incorporates CLI additions before the next desktop send', async () => {
   const original = { type: 'user', uuid: 'first', origin: { kind: 'human' }, message: { content: 'from CLI' } }
   sdk.getSessionMessages.mockResolvedValue([original])
   await manager.open('shared', '/tmp')
-  expect(await manager.handoffToCli('shared', '/tmp')).toBe('shared')
   expect((await manager.open('shared', '/tmp')).live).toBe(false)
   sdk.getSessionMessages.mockResolvedValue([original, { type: 'user', uuid: 'second', origin: { kind: 'human' }, message: { content: 'CLI continued' } }])
-  expect(await manager.checkExternal('shared', '/tmp')).toBe(true)
   await manager.send('shared', '/tmp', 'back in desktop', options)
   expect((await manager.open('shared', '/tmp')).messages.some(m => m.blocks.some(b => b.kind === 'text' && b.text === 'CLI continued'))).toBe(true)
   await vi.waitFor(() => expect(sdk.query).toHaveBeenCalledTimes(1))
   expect(sdk.query.mock.calls[0][0].options.resume).toBe('shared')
 })
-it('does not hand off running or unsaved sessions', async () => {
-  await expect(manager.handoffToCli('unsaved', '/tmp')).rejects.toThrow('尚未保存')
-  const id = manager.start('/tmp', 'working', options)
-  await expect(manager.handoffToCli(id, '/tmp')).rejects.toThrow('等待当前任务')
+
+it('publishes CLI history on focus and does not replace unchanged history again', async () => {
+  const original = { type: 'user', uuid: 'first', message: { content: 'CLI first' } }
+  sdk.getSessionMessages.mockResolvedValue([original])
+  await manager.open('shared', '/tmp')
+  const addition = { type: 'user', uuid: 'second', message: { content: 'CLI continued' } }
+  sdk.getSessionMessages.mockResolvedValue([original, addition])
+  expect(await manager.checkExternal('shared', '/tmp')).toBe(true)
+  expect(await manager.checkExternal('shared', '/tmp')).toBe(false)
+  expect(emit).toHaveBeenCalledExactlyOnceWith('shared', expect.objectContaining({
+    kind: 'replaceHistory', snapshot: expect.objectContaining({
+      messages: expect.arrayContaining([expect.objectContaining({ uuid: 'second' })])
+    })
+  }))
+  expect(sdk.query).not.toHaveBeenCalled()
+})
+
+it('keeps the desktop runtime for its own disk writes and resumes it after an external turn', async () => {
+  const id = manager.start('/tmp', 'desktop prompt', options)
+  await vi.waitFor(() => expect(sdk.query).toHaveBeenCalledTimes(1))
+  const request = sdk.query.mock.calls[0][0]
+  const query = sdk.query.mock.results[0].value
+  const { value: { uuid } } = await request.prompt[Symbol.asyncIterator]().next()
+  const own = { type: 'user', uuid, message: { content: 'desktop prompt' } }
+  const external = { type: 'user', uuid: 'external', message: { content: 'CLI prompt' } }
+  sdk.getSessionMessages.mockResolvedValue([own, external])
+  expect(await manager.checkExternal(id, '/tmp')).toBe(false)
+  expect(query.close).not.toHaveBeenCalled()
+
+  sdk.getSessionMessages.mockResolvedValue([own])
+  query.push({ type: 'result', subtype: 'success', uuid: 'result', result: 'OK', user_message_uuid: uuid })
+  await vi.waitFor(async () => expect((await manager.open(id, '/tmp')).state).toBe('idle'))
+  expect(await manager.checkExternal(id, '/tmp')).toBe(false)
+  expect(query.close).not.toHaveBeenCalled()
+
+  sdk.getSessionMessages.mockResolvedValue([own, external])
+  expect(await manager.checkExternal(id, '/tmp')).toBe(true)
+  expect(query.close).toHaveBeenCalledTimes(1)
+  expect((await manager.open(id, '/tmp')).messages.map(message => message.uuid)).toEqual([uuid, 'external'])
+  await manager.send(id, '/tmp', 'desktop continuation', options)
+  await vi.waitFor(() => expect(sdk.query).toHaveBeenCalledTimes(2))
+  expect(sdk.query.mock.calls[1][0].options.resume).toBe(id)
 })
 it('recreates the SDK query after a stream error and consumes the retry', async () => {
   sdk.query.mockImplementationOnce(() => ({ close: vi.fn(), async *[Symbol.asyncIterator]() { throw new Error('process exited') } }))
