@@ -1,7 +1,7 @@
 import { parseDesktopCommand, assertChatPrompt, type DesktopCommand } from '../../shared/sessionCommand'
 import { runLocalCommand } from '../localCommand'
 import { changeRule } from '../permissionRules'
-import { access } from 'node:fs/promises'
+import { access, realpath } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import * as store from '../store'
 import { historyIds, recordEdit } from '../sessions'
@@ -26,6 +26,15 @@ interface CommandObserver {
 }
 
 type Emit = (sessionId: string, event: ChatEvent) => void
+
+async function sameProjectDirectory(a: string, b: string): Promise<boolean> {
+  if (resolve(a) === resolve(b)) return true
+  // The filesystem decides which path aliases refer to the same project.
+  try {
+    const [first, second] = await Promise.all([realpath(a), realpath(b)])
+    return first === second
+  } catch { return false }
+}
 
 export class SessionManager {
   private live = new SessionRuntimes()
@@ -83,7 +92,8 @@ export class SessionManager {
 
   async subagentMessages(sessionId: string, projectPath: string, toolUseId: string) {
     const parent = await this.transcript(sessionId, projectPath)
-    if (!parent.projectPath || resolve(parent.projectPath) !== resolve(projectPath)) {
+    const parentPath = parent.projectPath
+    if (!parentPath || !await sameProjectDirectory(parentPath, projectPath)) {
       throw new Error('该会话不属于当前项目')
     }
     const historyId = this.historyId(sessionId)
@@ -92,7 +102,7 @@ export class SessionManager {
     const verifiedId = agent.agentIdVerified ? agent.agentId : undefined
     if (!verifiedId && agent.status === 'running' && this.live.has(sessionId)) return []
     const sdk = await loadSdk()
-    const dir = { dir: projectPath }
+    const dir = { dir: parentPath }
     const read = (id: string) => sdk.getSubagentMessages(historyId, id, dir)
     const belongs = (message: Awaited<ReturnType<typeof read>>[number], allowMissingTool: boolean) =>
       message.session_id === historyId &&

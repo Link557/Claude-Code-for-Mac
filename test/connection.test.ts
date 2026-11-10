@@ -1,7 +1,25 @@
 import { expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ dialog: {}, shell: {} }))
-vi.mock('../src/main/sdk', () => ({ claudeRuntime: vi.fn() }))
-import { parseAuthentication, posixLoginCommand, powershellLoginCommand, powershellResumeCommand } from '../src/main/connection'
+const sdk = vi.hoisted(() => ({ claudeRuntime: vi.fn(), withIdleQuery: vi.fn() }))
+vi.mock('../src/main/sdk', () => sdk)
+vi.mock('../src/main/systemProxy', () => ({ readSystemProxy: async () => ({}), proxyEnvironment: (_proxy: unknown, env: unknown) => env }))
+vi.mock('../src/main/env', () => ({ adoptLoginShellEnv: async () => {} }))
+vi.mock('node:child_process', () => ({
+  execFile: (_file: string, args: string[], _options: unknown, done: (error: null, output: { stdout: string }) => void) => {
+    done(null, { stdout: args[0] === '--version' ? '2.1.301' : '{"loggedIn":true,"apiProvider":"firstParty"}' })
+  }
+}))
+import { connectionStatus, parseAuthentication, posixLoginCommand, powershellLoginCommand, powershellResumeCommand } from '../src/main/connection'
+
+it('reports a project probe failure without returning SDK credentials or a stale provider', async () => {
+  sdk.claudeRuntime.mockReturnValue({ path: 'claude.exe', source: 'installed' })
+  sdk.withIdleQuery.mockRejectedValueOnce(new Error('gateway https://user:fixture-secret@example.invalid'))
+  const status = await connectionStatus('/test-project')
+  expect(status).toMatchObject({ loggedIn: true, provider: null, version: '2.1.301' })
+  expect(status.error).toContain('检查项目配置')
+  expect(JSON.stringify(status)).not.toContain('fixture-secret')
+  expect(sdk.withIdleQuery).toHaveBeenCalledWith(expect.objectContaining({ cwd: '/test-project', tools: [], mcpServers: {} }), expect.any(Function))
+})
 
 it('quotes a macOS executable without evaluating shell expressions', () => {
   expect(posixLoginCommand("/Users/O'Brien/$(bad)/claude")).toBe("'/Users/O'\\''Brien/$(bad)/claude' auth login")

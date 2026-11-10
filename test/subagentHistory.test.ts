@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { SessionManager } from '../src/main/live/SessionManager'
 import { SessionActivity } from '../src/main/sessionActivity'
@@ -26,6 +29,21 @@ it('reads only a confirmed child of the requested session through the SDK', asyn
   await expect(manager.subagentMessages('parent', '/project', 'unrelated')).rejects.toThrow('不属于当前会话')
   await expect(manager.subagentMessages('parent', '/other', 'tool')).rejects.toThrow('不属于当前项目')
   expect(sdk.getSubagentMessages).toHaveBeenCalledTimes(1)
+})
+
+it.runIf(process.platform === 'win32')('uses the confirmed project path for a Windows case alias', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'subagent-path-'))
+  const path = join(root, 'MixedCase')
+  mkdirSync(path)
+  try {
+    await manager.subagentMessages('parent', path, 'tool')
+    const messages = await manager.subagentMessages('parent', join(root, 'mixedcase'), 'tool')
+    expect(messages[0].blocks).toEqual([{ kind: 'text', text: '真实子会话' }])
+    expect(sdk.getSubagentMessages).toHaveBeenLastCalledWith('parent', 'child-id', { dir: path })
+  } finally {
+    rmdirSync(path)
+    rmdirSync(root)
+  }
 })
 
 it('returns no invented transcript when no child ID exists and propagates read errors', async () => {

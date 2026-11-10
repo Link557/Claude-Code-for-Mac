@@ -47,11 +47,16 @@ export async function connectionStatus(cwd = homedir()): Promise<ConnectionStatu
     Object.assign(result, parseAuthentication(stdout))
     result.configDirectory ??= process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
     result.provider = null
-    result.provider = await withIdleQuery({ cwd, tools: [], mcpServers: {}, strictMcpConfig: true, settings: { disableAllHooks: true } }, async query => {
-      const account = await query.accountInfo()
-      const config = await readConfigState(query)
-      return providerRoute(account, { ...env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) })
-    })
+    try {
+      result.provider = await withIdleQuery({ cwd, tools: [], mcpServers: {}, strictMcpConfig: true, settings: { disableAllHooks: true } }, async query => {
+        const account = await query.accountInfo()
+        const config = await readConfigState(query)
+        return providerRoute(account, { ...env, ...(isConfigRecord(config.effective.env) ? config.effective.env : {}) })
+      })
+    } catch {
+      // Raw SDK errors can contain the configured gateway URL or credentials.
+      result.error = '无法确认当前项目的 Claude Code 接入，请检查项目配置后重新检测。'
+    }
   } catch (error) {
     // execFile errors include command output. Never forward that to the renderer.
     result.error = error instanceof Error && !('cmd' in error) && !(error instanceof SyntaxError)
